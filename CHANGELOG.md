@@ -1,3 +1,7 @@
 ## 0.0.1
 
-Describe initial release.
+Initial (test) release.
+
+## 1.0.0
+
+Initial release
