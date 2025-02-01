@@ -13,8 +13,7 @@ class MyApp extends StatelessWidget {
         home: Scaffold(
             appBar: AppBar(toolbarHeight: 30, title: Text('Zoomify Image')),
             body: Zoomify(
-                baseUrl:
-                    'https://kaartdekaag1933.zeilvaartwarmond.nl/P6045538-P6045560',
+                baseUrl: 'https://chaerte.zeilvaartwarmond.nl/P2012368',
                 backgroundColor: Colors.black38,
                 showGrid: true,
                 showZoomButtons: true,

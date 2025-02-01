@@ -82,11 +82,6 @@ class ZoomifyState extends State<Zoomify> {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _loadImageProperties() async {
     final response = await http.get(Uri.parse('${widget.baseUrl}/ImageProperties.xml'));
     if (response.statusCode == 200) {
@@ -144,6 +139,7 @@ class ZoomifyState extends State<Zoomify> {
           color: widget.backgroundColor,
           child: Stack(children: [
             Listener(
+                // listen to mousewheel scrolls
                 onPointerSignal: (pointerSignal) => setState(() => _scrollZoom(pointerSignal)),
                 child: KeyboardListener(
                     focusNode: focusNode,
@@ -158,8 +154,7 @@ class ZoomifyState extends State<Zoomify> {
             if (widget.showZoomButtons)
               Container(
                   alignment: widget.zoomButtonPosition,
-                  child: SizedBox(
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(
                         onPressed: () => setState(() => _scrollZoom(
                             PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, -51.0)))),
@@ -168,64 +163,58 @@ class ZoomifyState extends State<Zoomify> {
                         onPressed: () => setState(() => _scrollZoom(
                             PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, 51.0)))),
                         icon: Icon(Icons.indeterminate_check_box, color: widget.zoomButtonColor))
-                  ])))
-//        Text('Offset: $horOffset, $verOffset')
+                  ]))
           ]));
     });
   }
 
   Widget _buildZoomifyImage() {
-    if (_imageDataReady) {
-      if (_zoomLevel > -1) {
-        _zoomLevel = _zoomLevel.clamp(0, _zoomRowCols.length - 1);
-        _scaleFactor = _scaleFactor.clamp(0.5, 1.0);
-        final rows = _zoomRowCols[_zoomLevel]['rows'];
-        final cols = _zoomRowCols[_zoomLevel]['cols'];
-        final width = _zoomRowCols[_zoomLevel]['width'];
-        final height = _zoomRowCols[_zoomLevel]['height'];
-        List<int> visibleRows = [];
-        List<int> visibleCols = [];
-        var start = 0;
-        var end = 0;
-        Offset visibleOffset = Offset.zero;
-
-        start = _horOffset < -(_tileSize * _scaleFactor) ? (-_horOffset ~/ (_tileSize * _scaleFactor)) : 0;
-        end = min(cols as int, (1 + (_windowWidth - _horOffset) ~/ (_tileSize * _scaleFactor)));
-        visibleCols = List.generate(end - start, (index) => (index + start).toInt());
-
-        start = _verOffset < -_tileSize * _scaleFactor ? (-_verOffset ~/ (_tileSize * _scaleFactor)) : 0;
-        end = min(rows as int, (1 + (_windowHeight - _verOffset) ~/ (_tileSize * _scaleFactor)));
-        visibleRows = List.generate(end - start, (index) => (index + start).toInt());
-
-        visibleOffset = Offset(_horOffset < 0 ? (_horOffset % (_tileSize * _scaleFactor)) - _tileSize * _scaleFactor : _horOffset,
-            _verOffset < 0 ? (_verOffset % (_tileSize * _scaleFactor)) - _tileSize * _scaleFactor : _verOffset);
-
-        return SizedBox(
-            width: _windowWidth,
-            height: _windowHeight,
-            child: Stack(
-              children: List.generate(visibleRows.length * visibleCols.length, (index) {
-                final row = index ~/ visibleCols.length;
-                final col = (index % visibleCols.length).toInt();
-                final tileUrl = _getTileUrl(_zoomLevel, visibleCols[col], visibleRows[row]);
-                return Positioned(
-                    left: visibleOffset.dx + col * _tileSize.toDouble() * _scaleFactor,
-                    top: visibleOffset.dy + row * _tileSize.toDouble() * _scaleFactor,
-                    child: Container(
-                        alignment: Alignment.topLeft,
-                        width:
-                            (col == cols - 1 ? (width % _tileSize) * _scaleFactor : _tileSize * _scaleFactor) + (widget.showGrid ? 1 : 0),
-                        height:
-                            (row == rows - 1 ? (height % _tileSize) * _scaleFactor : _tileSize * _scaleFactor) + (widget.showGrid ? 1 : 0),
-                        decoration: widget.showGrid ? BoxDecoration(border: Border.all(width: 0.5, color: Colors.black)) : null,
-                        child: Image(
-                            gaplessPlayback: true,
-                            image: NetworkImageProvider(tileUrl, retryWhen: (Attempt attempt) => attempt.counter < 10))));
-              }),
-            ));
-      } else {
-        return SizedBox.shrink();
-      }
+    if (_imageDataReady && _zoomLevel > -1) {
+      _zoomLevel = _zoomLevel.clamp(0, _zoomRowCols.length - 1);
+      _scaleFactor = _scaleFactor.clamp(0.5, 1.0);
+      final rows = _zoomRowCols[_zoomLevel]['rows'];
+      final cols = _zoomRowCols[_zoomLevel]['cols'];
+      final width = _zoomRowCols[_zoomLevel]['width'];
+      final height = _zoomRowCols[_zoomLevel]['height'];
+      List<int> visibleRows = [];
+      List<int> visibleCols = [];
+      var start = 0;
+      var end = 0;
+      Offset visibleOffset = Offset.zero;
+      // get a list of visible colums
+      start = _horOffset < -(_tileSize * _scaleFactor) ? (-_horOffset ~/ (_tileSize * _scaleFactor)) : 0;
+      end = min(cols as int, (1 + (_windowWidth - _horOffset) ~/ (_tileSize * _scaleFactor)));
+      visibleCols = List.generate(end - start, (index) => (index + start).toInt());
+      // and a list of visible rows
+      start = _verOffset < -_tileSize * _scaleFactor ? (-_verOffset ~/ (_tileSize * _scaleFactor)) : 0;
+      end = min(rows as int, (1 + (_windowHeight - _verOffset) ~/ (_tileSize * _scaleFactor)));
+      visibleRows = List.generate(end - start, (index) => (index + start).toInt());
+      // calculate the offset of the first visible tile
+      visibleOffset = Offset(_horOffset < 0 ? (_horOffset % (_tileSize * _scaleFactor)) - _tileSize * _scaleFactor : _horOffset,
+          _verOffset < 0 ? (_verOffset % (_tileSize * _scaleFactor)) - _tileSize * _scaleFactor : _verOffset);
+      // fill the available space with tiles
+      return SizedBox(
+          width: _windowWidth,
+          height: _windowHeight,
+          child: Stack(
+            children: List.generate(visibleRows.length * visibleCols.length, (index) {
+              final row = index ~/ visibleCols.length;
+              final col = (index % visibleCols.length).toInt();
+              final tileUrl = _getTileUrl(_zoomLevel, visibleCols[col], visibleRows[row]);
+              return Positioned(
+                  left: visibleOffset.dx + col * _tileSize.toDouble() * _scaleFactor,
+                  top: visibleOffset.dy + row * _tileSize.toDouble() * _scaleFactor,
+                  child: Container(
+                      alignment: Alignment.topLeft,
+                      width: (col == cols - 1 ? (width % _tileSize) * _scaleFactor : _tileSize * _scaleFactor) + (widget.showGrid ? 1 : 0),
+                      height:
+                          (row == rows - 1 ? (height % _tileSize) * _scaleFactor : _tileSize * _scaleFactor) + (widget.showGrid ? 1 : 0),
+                      decoration: widget.showGrid ? BoxDecoration(border: Border.all(width: 0.5, color: Colors.black)) : null,
+                      child: Image(
+                          gaplessPlayback: true,
+                          image: NetworkImageProvider(tileUrl, retryWhen: (Attempt attempt) => attempt.counter < 10))));
+            }),
+          ));
     } else {
       return SizedBox.shrink();
     }
@@ -301,25 +290,17 @@ class ZoomifyState extends State<Zoomify> {
     double newVerOffset = _verOffset;
     if (imgWidth > _windowWidth) {
       if (_horOffset > 0) newHorOffset = 0;
-      if (_horOffset < (_windowWidth - imgWidth)) {
-        newHorOffset = (_windowWidth - imgWidth);
-      }
+      if (_horOffset < (_windowWidth - imgWidth)) newHorOffset = (_windowWidth - imgWidth);
     } else {
       if (_horOffset < 0) newHorOffset = 0;
-      if (_horOffset > (_windowWidth - imgWidth)) {
-        newHorOffset = (_windowWidth - imgWidth);
-      }
+      if (_horOffset > (_windowWidth - imgWidth)) newHorOffset = (_windowWidth - imgWidth);
     }
     if (imgHeight > _windowHeight) {
       if (_verOffset > 0) newVerOffset = 0;
-      if (_verOffset < (_windowHeight - imgHeight)) {
-        newVerOffset = (_windowHeight - imgHeight);
-      }
+      if (_verOffset < (_windowHeight - imgHeight)) newVerOffset = (_windowHeight - imgHeight);
     } else {
       if (_verOffset < 0) newVerOffset = 0;
-      if (_verOffset > (_windowHeight - imgHeight)) {
-        newVerOffset = (_windowHeight - imgHeight);
-      }
+      if (_verOffset > (_windowHeight - imgHeight)) newVerOffset = (_windowHeight - imgHeight);
     }
     _horOffset = newHorOffset;
     _verOffset = newVerOffset;
