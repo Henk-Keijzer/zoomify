@@ -55,7 +55,7 @@ class ZoomifyState extends State<Zoomify> {
   double _imageWidth = 0;
   double _imageHeight = 0;
   double _scaleStart = 1;
-  final FocusNode focusNode = FocusNode();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -130,7 +130,7 @@ class ZoomifyState extends State<Zoomify> {
 
   @override
   Widget build(BuildContext context) {
-    FocusScope.of(context).requestFocus(focusNode);
+    FocusScope.of(context).requestFocus(_focusNode);
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints constraints) {
       _windowWidth = constraints.maxWidth;
       _windowHeight = constraints.maxHeight;
@@ -142,7 +142,7 @@ class ZoomifyState extends State<Zoomify> {
                 // listen to mousewheel scrolls
                 onPointerSignal: (pointerSignal) => setState(() => _scrollZoom(pointerSignal)),
                 child: KeyboardListener(
-                    focusNode: focusNode,
+                    focusNode: _focusNode,
                     onKeyEvent: (event) => _handleKeyEvent(event),
                     child: GestureDetector(
                         onScaleUpdate: (scaleDetails) => setState(() => _handleGestures(scaleDetails)),
@@ -313,10 +313,11 @@ class ZoomifyState extends State<Zoomify> {
     if (oldWidth > _windowWidth || oldHeight > _windowHeight) {
       _scaleFactor = _scaleFactor - (_scaleStart - scaleDetails.scale) / 2;
       if (_scaleFactor < 0.5) {
-        _scaleFactor = 0.5;
         if (_zoomLevel > 0) {
           _zoomLevel--;
-          _scaleFactor = 1.0;
+          _scaleFactor = _scaleFactor * 2;
+        } else {
+          _scaleFactor = 0.5;
         }
       }
       _scaleStart = scaleDetails.scale;
@@ -335,7 +336,7 @@ class ZoomifyState extends State<Zoomify> {
       if (_scaleFactor > 1.0) {
         if (_zoomLevel < _zoomRowCols.length - 1) {
           _zoomLevel++;
-          _scaleFactor = 0.5;
+          _scaleFactor = _scaleFactor / 2;
         } else {
           _scaleFactor = 1;
         }
