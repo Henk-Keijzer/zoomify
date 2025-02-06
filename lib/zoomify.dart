@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_network_image/flutter_network_image.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/gestures.dart';
+import 'package:xml/xml.dart';
 
 class Zoomify extends StatefulWidget {
   /// the url of the folder containing the zoomified image. i.e https://www.example.com/imagefolder
@@ -44,7 +45,7 @@ class Zoomify extends StatefulWidget {
 class ZoomifyState extends State<Zoomify> {
   double _windowWidth = 0;
   double _windowHeight = 0;
-  double _tileSize = 256;
+  int _tileSize = 256;
   int _zoomLevel = -1;
   double _scaleFactor = 1.0;
   double _horOffset = 0;
@@ -52,8 +53,8 @@ class ZoomifyState extends State<Zoomify> {
   List<Map<String, dynamic>> _zoomRowCols = [];
   Map<String, int> _tileGroupMapping = {};
   bool _imageDataReady = false;
-  double _imageWidth = 0;
-  double _imageHeight = 0;
+  int _imageWidth = 0;
+  int _imageHeight = 0;
   double _scaleStart = 1;
   final FocusNode _focusNode = FocusNode();
 
@@ -83,24 +84,34 @@ class ZoomifyState extends State<Zoomify> {
   }
 
   Future<void> _loadImageProperties() async {
+    // first get the essentials from the ImageProperties.xml
     final response = await http.get(Uri.parse('${widget.baseUrl}/ImageProperties.xml'));
     if (response.statusCode == 200) {
-      final properties = _parseImageProperties(response.body);
-      _imageWidth = properties['WIDTH']!;
-      _imageHeight = properties['HEIGHT']!;
-      _tileSize = properties['TILESIZE']!;
-      // now make a list with the number of rows and colums per zoomlevel
-      int calcWidth = _imageWidth.toInt();
-      int calcHeight = _imageHeight.toInt();
-      var tiles = 2;
+      final attributes = XmlDocument.parse(response.body).getElement("IMAGE_PROPERTIES")?.attributes ?? [];
+      for (final attribute in attributes) {
+        switch (attribute.name.toString()) {
+          case 'WIDTH':
+            _imageWidth = int.parse(attribute.value);
+          case 'HEIGHT':
+            _imageHeight = int.parse(attribute.value);
+          case 'TILESIZE':
+            _tileSize = int.parse(attribute.value);
+        }
+      }
+      // now make a list with the number of rows, number of colums, image widths and image heights per zoomlevel (in reverse order, i.e
+      // zoomlevel 0 is the smallest image, fitting in a single tile: 0-0-0.jpg)
+      var calcWidth = _imageWidth;
+      var calcHeight = _imageHeight;
+      var tiles = 2; // any value > 1
       while (tiles > 1) {
         var rows = (calcHeight / _tileSize).ceil();
         var cols = (calcWidth / _tileSize).ceil();
         _zoomRowCols.insert(0, {'rows': rows, 'cols': cols, 'width': calcWidth, 'height': calcHeight});
-        tiles = rows * cols;
         calcWidth = (calcWidth / 2).floor();
         calcHeight = (calcHeight / 2).floor();
+        tiles = rows * cols;
       }
+      // finally make a Map with the filename as string and as value the tilegroup number
       tiles = 0;
       var tileGroupNumber = -1;
       for (var z = 0; z < _zoomRowCols.length; z++) {
@@ -118,16 +129,6 @@ class ZoomifyState extends State<Zoomify> {
     }
   }
 
-  Map<String, double> _parseImageProperties(String xml) {
-    final regExp = RegExp(r'(\w+)="(\d+)"');
-    final matches = regExp.allMatches(xml);
-    final properties = <String, double>{};
-    for (final match in matches) {
-      properties[match.group(1)!] = double.parse(match.group(2)!);
-    }
-    return properties;
-  }
-
   @override
   Widget build(BuildContext context) {
     FocusScope.of(context).requestFocus(_focusNode);
@@ -140,27 +141,27 @@ class ZoomifyState extends State<Zoomify> {
           child: Stack(children: [
             Listener(
                 // listen to mousewheel scrolls
-                onPointerSignal: (pointerSignal) => setState(() => _scrollZoom(pointerSignal)),
+                onPointerSignal: (pointerSignal) => setState(() => _scrollZoomPan(pointerSignal)),
                 child: KeyboardListener(
                     focusNode: _focusNode,
-                    onKeyEvent: (event) => _handleKeyEvent(event),
+                    onKeyEvent: (event) => setState(() => _handleKeyEvent(event)),
                     child: GestureDetector(
                         onScaleUpdate: (scaleDetails) => setState(() => _handleGestures(scaleDetails)),
                         onScaleStart: (_) => _scaleStart = 1,
                         onScaleEnd: (_) => _scaleStart = 1,
-                        onDoubleTap: () => setState(() => _scrollZoom(
+                        onDoubleTap: () => setState(() => _scrollZoomPan(
                             PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, -51.0)))),
-                        child: _buildZoomifyImage()))),
+                        child: _zoomifyImage()))),
             if (widget.showZoomButtons)
               Container(
                   alignment: widget.zoomButtonPosition,
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     IconButton(
-                        onPressed: () => setState(() => _scrollZoom(
+                        onPressed: () => setState(() => _scrollZoomPan(
                             PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, -51.0)))),
                         icon: Icon(Icons.add_box, color: widget.zoomButtonColor)),
                     IconButton(
-                        onPressed: () => setState(() => _scrollZoom(
+                        onPressed: () => setState(() => _scrollZoomPan(
                             PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, 51.0)))),
                         icon: Icon(Icons.indeterminate_check_box, color: widget.zoomButtonColor))
                   ]))
@@ -168,7 +169,7 @@ class ZoomifyState extends State<Zoomify> {
     });
   }
 
-  Widget _buildZoomifyImage() {
+  Widget _zoomifyImage() {
     if (_imageDataReady && _zoomLevel > -1) {
       _zoomLevel = _zoomLevel.clamp(0, _zoomRowCols.length - 1);
       _scaleFactor = _scaleFactor.clamp(0.5, 1.0);
@@ -176,21 +177,17 @@ class ZoomifyState extends State<Zoomify> {
       final cols = _zoomRowCols[_zoomLevel]['cols'];
       final width = _zoomRowCols[_zoomLevel]['width'];
       final height = _zoomRowCols[_zoomLevel]['height'];
-      List<int> visibleRows = [];
-      List<int> visibleCols = [];
-      var start = 0;
-      var end = 0;
-      Offset visibleOffset = Offset.zero;
-      // get a list of visible colums
-      start = _horOffset < -(_tileSize * _scaleFactor) ? (-_horOffset ~/ (_tileSize * _scaleFactor)) : 0;
-      end = min(cols as int, (1 + (_windowWidth - _horOffset) ~/ (_tileSize * _scaleFactor)));
-      visibleCols = List.generate(end - start, (index) => (index + start).toInt());
+      // create a list of visible colums
+      var start = _horOffset < -(_tileSize * _scaleFactor) ? (-_horOffset ~/ (_tileSize * _scaleFactor)) : 0;
+      var end = min(cols as int, (1 + (_windowWidth - _horOffset) ~/ (_tileSize * _scaleFactor)));
+      final List<int> visibleCols = List.generate(end - start, (index) => (index + start).toInt());
       // and a list of visible rows
       start = _verOffset < -_tileSize * _scaleFactor ? (-_verOffset ~/ (_tileSize * _scaleFactor)) : 0;
       end = min(rows as int, (1 + (_windowHeight - _verOffset) ~/ (_tileSize * _scaleFactor)));
-      visibleRows = List.generate(end - start, (index) => (index + start).toInt());
+      final List<int> visibleRows = List.generate(end - start, (index) => (index + start).toInt());
       // calculate the offset of the first visible tile
-      visibleOffset = Offset(_horOffset < 0 ? (_horOffset % (_tileSize * _scaleFactor)) - _tileSize * _scaleFactor : _horOffset,
+      final Offset visibleOffset = Offset(
+          _horOffset < 0 ? (_horOffset % (_tileSize * _scaleFactor)) - _tileSize * _scaleFactor : _horOffset,
           _verOffset < 0 ? (_verOffset % (_tileSize * _scaleFactor)) - _tileSize * _scaleFactor : _verOffset);
       // fill the available space with tiles
       return SizedBox(
@@ -221,7 +218,7 @@ class ZoomifyState extends State<Zoomify> {
   }
 
   void _setInitialImageData() {
-    // set the initial zoomLevel, scaleFactor and offsets based on the maximum space we have received from our parent
+    // set the initial zoomLevel, scaleFactor and offsets based on the maximum space we have received from our parent widget
     // set the zoomLevel one above the available size, so to fit the total picture we scale down
     var zoom = 0;
     while (zoom < _zoomRowCols.length && _zoomRowCols[zoom]['width'] < _windowWidth && _zoomRowCols[zoom]['height'] < _windowHeight) {
@@ -233,6 +230,12 @@ class ZoomifyState extends State<Zoomify> {
     _scaleFactor = _scaleFactor > 1 ? 1 : _scaleFactor;
     _horOffset = (_windowWidth - _zoomRowCols[_zoomLevel]['width'] * _scaleFactor) / 2;
     _verOffset = (_windowHeight - _zoomRowCols[_zoomLevel]['height'] * _scaleFactor) / 2;
+  }
+
+  double _calculateScaleFactor(double width1, double height1, double width2, double height2) {
+    double scaleFactorWidth = width2 / width1;
+    double scaleFactorHeight = height2 / height1;
+    return scaleFactorWidth < scaleFactorHeight ? scaleFactorWidth : scaleFactorHeight;
   }
 
   void _handleKeyEvent(event) {
@@ -251,11 +254,10 @@ class ZoomifyState extends State<Zoomify> {
         case 'H':
           _setInitialImageData();
         case '+' || '=':
-          _scrollZoom(PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, -51.0)));
+          _scrollZoomPan(PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, 51.0)));
         case '-' || '_':
-          _scrollZoom(PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, 51.0)));
+          _scrollZoomPan(PointerScrollEvent(position: Offset(_windowWidth / 2, _windowHeight / 2), scrollDelta: Offset(0.0, -51.0)));
       }
-      setState(() {});
     }
   }
 
@@ -270,7 +272,7 @@ class ZoomifyState extends State<Zoomify> {
     _pan(scaleDetails);
   }
 
-  void _scrollZoom(pointerSignal) {
+  void _scrollZoomPan(pointerSignal) {
     _scaleStart = 1;
     if (pointerSignal.scrollDelta.dy > 0) {
       _zoomOut(ScaleUpdateDetails(focalPoint: pointerSignal.position, scale: pointerSignal.scrollDelta.dy > 50 ? 0.7 : 0.9));
@@ -290,17 +292,25 @@ class ZoomifyState extends State<Zoomify> {
     double newVerOffset = _verOffset;
     if (imgWidth > _windowWidth) {
       if (_horOffset > 0) newHorOffset = 0;
-      if (_horOffset < (_windowWidth - imgWidth)) newHorOffset = (_windowWidth - imgWidth);
+      if (_horOffset < (_windowWidth - imgWidth)) {
+        newHorOffset = (_windowWidth - imgWidth);
+      }
     } else {
       if (_horOffset < 0) newHorOffset = 0;
-      if (_horOffset > (_windowWidth - imgWidth)) newHorOffset = (_windowWidth - imgWidth);
+      if (_horOffset > (_windowWidth - imgWidth)) {
+        newHorOffset = (_windowWidth - imgWidth);
+      }
     }
     if (imgHeight > _windowHeight) {
       if (_verOffset > 0) newVerOffset = 0;
-      if (_verOffset < (_windowHeight - imgHeight)) newVerOffset = (_windowHeight - imgHeight);
+      if (_verOffset < (_windowHeight - imgHeight)) {
+        newVerOffset = (_windowHeight - imgHeight);
+      }
     } else {
       if (_verOffset < 0) newVerOffset = 0;
-      if (_verOffset > (_windowHeight - imgHeight)) newVerOffset = (_windowHeight - imgHeight);
+      if (_verOffset > (_windowHeight - imgHeight)) {
+        newVerOffset = (_windowHeight - imgHeight);
+      }
     }
     _horOffset = newHorOffset;
     _verOffset = newVerOffset;
@@ -311,7 +321,7 @@ class ZoomifyState extends State<Zoomify> {
     var oldWidth = _zoomRowCols[_zoomLevel]['width'] * _scaleFactor;
     var oldHeight = _zoomRowCols[_zoomLevel]['height'] * _scaleFactor;
     if (oldWidth > _windowWidth || oldHeight > _windowHeight) {
-      _scaleFactor = _scaleFactor - (_scaleStart - scaleDetails.scale) / 2;
+      _scaleFactor = _scaleFactor - ((_scaleStart - scaleDetails.scale) / 2);
       if (_scaleFactor < 0.5) {
         if (_zoomLevel > 0) {
           _zoomLevel--;
@@ -347,12 +357,6 @@ class ZoomifyState extends State<Zoomify> {
       _horOffset = -((-_horOffset + scaleDetails.focalPoint.dx) * newWidth / oldWidth) + scaleDetails.focalPoint.dx;
       _verOffset = -((-_verOffset + scaleDetails.focalPoint.dy) * newHeight / oldHeight) + scaleDetails.focalPoint.dy;
     }
-  }
-
-  double _calculateScaleFactor(double width1, double height1, double width2, double height2) {
-    double scaleFactorWidth = width2 / width1;
-    double scaleFactorHeight = height2 / height1;
-    return scaleFactorWidth < scaleFactorHeight ? scaleFactorWidth : scaleFactorHeight;
   }
 
   String _getTileUrl(int zoom, int col, int row) {

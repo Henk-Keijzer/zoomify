@@ -37,20 +37,26 @@ Install the package using `flutter pub add zoomify` and import it in your dart a
     
     class MyApp extends StatelessWidget {
         const MyApp({super.key});
-        
+
+        static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
+        static const photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';  
+
         @override
         Widget build(BuildContext context) {
             return MaterialApp(
                 debugShowCheckedModeBanner: false,
                     home: Scaffold(
-                        appBar: AppBar(toolbarHeight: 30, title: Text('Zoomify Image')),
+                        appBar: AppBar(
+                            toolbarHeight: 30, 
+                            backgroundColor: Colors.black, 
+                            title: Text(photoTitle, style: TextStyle(color: Colors.white))),
                         body: Zoomify(
-                            baseUrl: 'https://kaartdekaag1933.zeilvaartwarmond.nl/P6045538-P6045560',
-                            backgroundColor: Colors.black38,
-                            showGrid: true,
+                            baseUrl: folderUrl,
+                            backgroundColor: Colors.black,
+                            showGrid: false,
                             showZoomButtons: true,
                             zoomButtonPosition: Alignment.bottomLeft,
-                            zoomButtonColor: Colors.red)));
+                            zoomButtonColor: Colors.white)));
         }
     }
 
