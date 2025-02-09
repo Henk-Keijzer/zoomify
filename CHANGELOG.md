@@ -1,3 +1,8 @@
+## 1.0.2
+
+- Used package 'path' to ensure proper uri creation
+- Added basic animation when zooming and panning using keyboard
+
 ## 1.0.1
 
 Minor bug fixes
