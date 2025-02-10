@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        debugShowCheckedModeBanner: false,
+        debugShowCheckedModeBanner: true,
         home: Scaffold(
             appBar:
                 AppBar(toolbarHeight: 30, backgroundColor: Colors.black, title: Text(photoTitle, style: TextStyle(color: Colors.white))),
@@ -24,6 +24,16 @@ class MyApp extends StatelessWidget {
                 showGrid: false,
                 showZoomButtons: true,
                 zoomButtonPosition: Alignment.centerRight,
-                zoomButtonColor: Colors.white)));
+                zoomButtonColor: Colors.white,
+                onChange: (scale, offset) => handleChange(scale, offset),
+                onImageReady: (width, height, zoomLevels) => handleImageReady(width, height, zoomLevels))));
+  }
+
+  void handleChange(double scale, Offset offset) {
+    debugPrint('scale: $scale, horOffset: ${offset.dx}, verOffset: ${offset.dy}');
+  }
+
+  void handleImageReady(int width, int height, int zoomLevels) {
+    debugPrint('imageWidth: $width, imageHeight: $height, zoomLevels: $zoomLevels');
   }
 }
