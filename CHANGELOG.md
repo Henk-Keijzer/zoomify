@@ -1,3 +1,10 @@
+## 1.0.4
+
+- Added zoomAndPan, animateZoomAndPan and reset functions, to allow for programmatically zoom, pan or reset the image
+  (See the example how to use these functions)
+- Added animation parameters duration and curve
+- bugfixes
+
 ## 1.0.3
 
 - Improved(?) animations
