@@ -32,7 +32,7 @@ class Zoomify extends StatefulWidget {
 
   /// callback function onChange, returns the scale of the image shown and the offset of the top-left corner related to the top-left
   /// corner of the visible image area
-  final Function(double scale, Offset offset)? onChange;
+  final Function(double zoomLevel, Offset offset)? onChange;
 
   /// callback function when image is ready. returns max image width and height and the number of zoomlevels
   final Function(int imageWidth, int imageHeight, int zoomLevels)? onImageReady;
