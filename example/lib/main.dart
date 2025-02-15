@@ -47,7 +47,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 showZoomButtons: true,
                 zoomButtonPosition: Alignment.centerRight,
                 zoomButtonColor: Colors.white,
-                onChange: (scale, offset) => handleChange(scale, offset),
+                onChange: (zoomLevel, offset) => handleChange(zoomLevel, offset),
                 onImageReady: (width, height, maxZoom) => handleImageReady(width, height, maxZoom),
                 animationDuration: Duration(milliseconds: 500),
                 animationCurve: Curves.easeOut)));
