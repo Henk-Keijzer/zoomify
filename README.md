@@ -50,8 +50,8 @@ Install the package using `flutter pub add zoomify` and import it in your dart a
 			debugShowCheckedModeBanner: false,
 			home: Scaffold(
 				appBar: AppBar(backgroundColor: Colors.black, title: Text(photoTitle, style: TextStyle(color: Colors.white)), actions: [
-				  IconButton(onPressed: () => zoomIn(2.0), icon: Icon(Icons.add_box, color: Colors.white)),
-				  IconButton(onPressed: () => zoomOut(0.5), icon: Icon(Icons.indeterminate_check_box, color: Colors.white)),
+				  IconButton(onPressed: () => zoomInOut(0.5), icon: Icon(Icons.add_box, color: Colors.white)),
+				  IconButton(onPressed: () => zoomInOut(-0.5), icon: Icon(Icons.indeterminate_check_box, color: Colors.white)),
 				  IconButton(onPressed: () => panUp(), icon: Icon(Icons.arrow_upward, color: Colors.white)),
 				  IconButton(onPressed: () => panDown(), icon: Icon(Icons.arrow_downward, color: Colors.white)),
 				  IconButton(onPressed: () => panLeft(), icon: Icon(Icons.arrow_back, color: Colors.white)),
@@ -62,37 +62,31 @@ Install the package using `flutter pub add zoomify` and import it in your dart a
 					key: zoomifyKey,
 					baseUrl: folderUrl,
 					backgroundColor: Colors.black,
-					showGrid: false,
+					showGrid: true,
 					showZoomButtons: true,
 					zoomButtonPosition: Alignment.centerRight,
 					zoomButtonColor: Colors.white,
 					onChange: (scale, offset) => handleChange(scale, offset),
-					onImageReady: (width, height, zoomLevels) => handleImageReady(width, height, zoomLevels),
+					onImageReady: (width, height, maxZoom) => handleImageReady(width, height, maxZoom),
 					animationDuration: Duration(milliseconds: 500),
 					animationCurve: Curves.easeOut)));
 	  }
 
-	  void handleImageReady(int width, int height, int zoomLevels) {
-		debugPrint('imageWidth: $width, imageHeight: $height, zoomLevels: $zoomLevels');
+	  void handleImageReady(int width, int height, int maxZoomLevel) {
+		debugPrint('imageWidth: $width, imageHeight: $height, maxZoomLevel: $maxZoomLevel');
 	  }
 
-	  void handleChange(double scale, Offset offset) {
-		debugPrint('scale: $scale, horOffset: ${offset.dx}, verOffset: ${offset.dy}');
-		currentScale = scale;
+	  void handleChange(double zoomLevel, Offset offset) {
+		debugPrint('zoomLevel: $zoomLevel, horOffset: ${offset.dx}, verOffset: ${offset.dy}');
+		currentZoomLevel = zoomLevel;
 	  }
 
 	  //
-	  // Change zoom and pan programmatically. Instead of state.animateZoomAndPan, you can also use state.zoomAndPan
-	  void zoomIn(factor) {
-		// note: zoomcenter is set to the center of the screen
+	  // Change zoom and pan programmatically. Instead of animateZoomAndPan, you can also use zoomAndPan
+	  // you can also combine pan info and zoom info in on call
+	  void zoomInOut(zoomLevelDelta) {
 		dynamic state = zoomifyKey.currentState;
-		state.animateZoomAndPan(scaleDelta: factor * currentScale, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
-	  }
-
-	  void zoomOut(factor) {
-		// note zoomcenter is set to the top-left corner
-		dynamic state = zoomifyKey.currentState;
-		state.zoomAndPan(scaleDelta: -factor * currentScale, zoomCenter: Offset.zero);
+		state.animateZoomAndPan(zoomLevel: currentZoomLevel + zoomLevelDelta, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
 	  }
 
 	  void panUp() {

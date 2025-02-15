@@ -1,3 +1,10 @@
+## 1.0.5
+
+- BREAKING CHANGE: in the (animate)ZoomAndPan function the scaleDelta parameter has been removed and replaced by the zoomLevel parameter, i.
+  e. you have to supply the new zoom level instead of a delta. The first parameter that is returned in the onImageReady callback is the 
+  maximum zoomlevel. Zoomlevel 1 fits the whole picture within a single 256x256 tile (TileGroup0/0-0-0.jpg). However, you cannot zoom 
+  out smaller than the size of the widget.
+
 ## 1.0.4
 
 - Added zoomAndPan, animateZoomAndPan and reset functions, to allow for programmatically zoom, pan or reset the image
