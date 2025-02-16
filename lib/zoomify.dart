@@ -43,6 +43,12 @@ class Zoomify extends StatefulWidget {
   /// animation curve
   final Curve animationCurve;
 
+  /// sync, onChange callback function will be triggered each animation frame
+  final bool animationSync;
+
+  /// the controller to use
+  final ZoomifyController? controller;
+
   const Zoomify(
       {super.key,
       required this.baseUrl,
@@ -54,20 +60,22 @@ class Zoomify extends StatefulWidget {
       this.onChange,
       this.onImageReady,
       this.animationDuration = const Duration(milliseconds: 500),
-      this.animationCurve = Curves.easeOut});
+      this.animationCurve = Curves.easeOut,
+      this.animationSync = false,
+      this.controller});
 
   @override
   ZoomifyState createState() => ZoomifyState();
 }
 
 class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
-  double _windowWidth = 0;
-  double _windowHeight = 0;
+  int _windowWidth = 0;
+  int _windowHeight = 0;
   int _tileSize = 256;
   double _maxZoomLevel = 0;
   double _zoomLevel = 0;
-  double _horOffset = 0;
-  double _verOffset = 0;
+  int _horOffset = 0;
+  int _verOffset = 0;
   List<Map<String, dynamic>> _zoomRowCols = [];
   Map<String, int> _tileGroupMapping = {};
   bool _imageDataReady = false;
@@ -86,6 +94,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    widget.controller?.addListener(() => _controllerFunctions());
     _animationController = AnimationController(duration: widget.animationDuration, vsync: this);
     _animation = CurvedAnimation(parent: _animationController, curve: widget.animationCurve)..addListener(() => _updateAnimation());
     _loadImageProperties();
@@ -122,6 +131,20 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _animationController.dispose();
   }
 
+  void _controllerFunctions() {
+    if (widget.controller!.res) {
+      setState(() => _setInitialImageData());
+      return;
+    } else if (widget.controller!.anim) {
+      _animateZoomAndPan(
+          zoomLevel: widget.controller!.zoomLevel, zoomCenter: widget.controller!.zoomCenter, panOffset: widget.controller!.panOffset);
+    } else {
+      _zoomAndPan(
+          zoomLevel: widget.controller!.zoomLevel, zoomCenter: widget.controller!.zoomCenter, panOffset: widget.controller!.panOffset);
+    }
+  }
+
+  @Deprecated('Use animateZoomAndPan using the controller instead')
   void animateZoomAndPan({double zoomLevel = -1, Offset zoomCenter = const Offset(-1, -1), Offset panOffset = Offset.zero}) {
     _animateZoomAndPan(
         panOffset: panOffset,
@@ -129,6 +152,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
         zoomLevel: zoomLevel == -1 ? _zoomLevel : zoomLevel);
   }
 
+  @Deprecated('Use zoomAndPan using the controller instead')
   void zoomAndPan({double zoomLevel = -1, Offset zoomCenter = const Offset(-1, -1), Offset panOffset = Offset.zero}) {
     _zoomAndPan(
         panOffset: panOffset,
@@ -136,6 +160,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
         zoomLevel: zoomLevel == -1 ? _zoomLevel : zoomLevel);
   }
 
+  @Deprecated('Use reset using the controller instead')
   void reset() {
     setState(() => _setInitialImageData());
   }
@@ -192,9 +217,12 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     FocusScope.of(context).requestFocus(_focusNode);
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints constraints) {
-      _windowWidth = constraints.maxWidth;
-      _windowHeight = constraints.maxHeight;
-      if (_imageDataReady && !_imageReady) _setInitialImageData();
+      _windowWidth = constraints.maxWidth.toInt();
+      _windowHeight = constraints.maxHeight.toInt();
+      if (_imageDataReady && !_imageReady) {
+        _executeAfterBuild();
+        _setInitialImageData(building: true);
+      }
       return Container(
           color: widget.backgroundColor,
           child: Stack(children: [
@@ -238,7 +266,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
       if (baseZoomLevel >= _zoomRowCols.length) baseZoomLevel = baseZoomLevel - 1;
       double scale = pow(2, _zoomLevel - _zoomLevel.ceil()).toDouble();
       if (_zoomRowCols[baseZoomLevel]['width'] * scale < _windowWidth && _zoomRowCols[baseZoomLevel]['height'] * scale < _windowHeight) {
-        _setInitialImageData();
+        _setInitialImageData(building: true);
       }
       baseZoomLevel = _zoomLevel.clamp(0, _maxZoomLevel).floor();
       if (baseZoomLevel >= _zoomRowCols.length) baseZoomLevel = baseZoomLevel - 1;
@@ -256,8 +284,8 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
       final endY = min(rows as int, (1 + (_windowHeight - _verOffset) ~/ (_tileSize * scale)));
       final List<int> visibleRows = List.generate(endY - startY, (index) => (index + startY).toInt());
       // calculate the offset of the first visible tile
-      final Offset visibleOffset = Offset(_horOffset < 0 ? (_horOffset % (_tileSize * scale)) - _tileSize * scale : _horOffset,
-          _verOffset < 0 ? (_verOffset % (_tileSize * scale)) - _tileSize * scale : _verOffset);
+      final Offset visibleOffset = Offset(_horOffset < 0 ? (_horOffset % (_tileSize * scale)) - _tileSize * scale : _horOffset.toDouble(),
+          _verOffset < 0 ? (_verOffset % (_tileSize * scale)) - _tileSize * scale : _verOffset.toDouble());
       // how to get the tile url
       String getTileUrl(int zoom, int col, int row) {
         var tileGroup = _tileGroupMapping['$zoom-$col-$row.jpg'];
@@ -266,8 +294,8 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
 
       // fill the available space with tiles
       return SizedBox(
-          width: _windowWidth,
-          height: _windowHeight,
+          width: _windowWidth.toDouble(),
+          height: _windowHeight.toDouble(),
           child: Stack(
             children: List.generate(visibleRows.length * visibleCols.length, (index) {
               final row = index ~/ visibleCols.length;
@@ -291,7 +319,14 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     }
   }
 
-  void _setInitialImageData() {
+  Future<void> _executeAfterBuild() async {
+    await Future.delayed(Duration.zero);
+    // this code will get executed after the build method because of the way async functions are scheduled.
+    // it ensures the onChange callback is allowed to call setState itself
+    widget.onChange?.call(_zoomLevel, Offset(_horOffset.toDouble(), _verOffset.toDouble()));
+  }
+
+  void _setInitialImageData({building = false}) {
     // set the initial zoomLevel and vertical and horizontal offsets based on the maximum space we have received from our parent widget
     //
     // first find the baseZoomLevel one above the available size, so to fit the total picture, then we scale down
@@ -301,21 +336,20 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     }
     var baseZoomLevel = (zoom < _zoomRowCols.length) ? zoom : _zoomRowCols.length - 1;
 
-    double calculateScale(double width1, double height1, double width2, double height2) {
+    double calculateScale(int width1, int height1, int width2, int height2) {
       double scaleWidth = width2 / width1;
       double scaleHeight = height2 / height1;
       return scaleWidth < scaleHeight ? scaleWidth : scaleHeight;
     }
 
-    var scale = calculateScale(
-        _zoomRowCols[baseZoomLevel]['width'].toDouble(), _zoomRowCols[baseZoomLevel]['height'].toDouble(), _windowWidth, _windowHeight);
+    var scale = calculateScale(_zoomRowCols[baseZoomLevel]['width'], _zoomRowCols[baseZoomLevel]['height'], _windowWidth, _windowHeight);
     _zoomLevel = baseZoomLevel + 1 + (log(scale) / log(2)) - 0.0001;
-    _horOffset = (_windowWidth - _zoomRowCols[baseZoomLevel]['width'] * scale) / 2;
-    _verOffset = (_windowHeight - _zoomRowCols[baseZoomLevel]['height'] * scale) / 2;
+    _horOffset = ((_windowWidth - _zoomRowCols[baseZoomLevel]['width'] * scale) / 2).round().toInt();
+    _verOffset = ((_windowHeight - _zoomRowCols[baseZoomLevel]['height'] * scale) / 2).round().toInt();
     _imageWidth = (_zoomRowCols[baseZoomLevel]['width'].toInt() * scale).toInt();
     _imageHeight = (_zoomRowCols[baseZoomLevel]['height'].toInt() * scale).toInt();
     _imageReady = true;
-    widget.onChange?.call(_zoomLevel, Offset(_horOffset, _verOffset));
+    if (!building) widget.onChange?.call(_zoomLevel, Offset(_horOffset.toDouble(), _verOffset.toDouble()));
   }
 
   void _handleKeyEvent(event) {
@@ -350,19 +384,19 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   }
 
   // set new pan and zoom values
-  void _zoomAndPan({panOffset = Offset.zero, zoomCenter = Offset.zero, required zoomLevel}) {
-    _zoom(zoomLevel, zoomCenter);
+  void _zoomAndPan({panOffset = Offset.zero, zoomCenter = const Offset(-1, -1), zoomLevel = -1}) {
+    _zoom(zoomLevel == -1 ? _zoomLevel : zoomLevel, zoomCenter.dx == -1 ? _zoomCenter : zoomCenter);
     _pan(panOffset);
     setState(() {});
-    widget.onChange?.call(_zoomLevel, Offset(_horOffset, _verOffset));
+    widget.onChange?.call(_zoomLevel, Offset(_horOffset.toDouble(), _verOffset.toDouble()));
   }
 
   // set initial pan and zoom values for pan/zoom animation and start the animation
-  void _animateZoomAndPan({panOffset = Offset.zero, zoomCenter = Offset.zero, required zoomLevel}) {
+  void _animateZoomAndPan({panOffset = Offset.zero, zoomCenter = const Offset(-1, -1), zoomLevel = -1}) {
     _animationController.reset(); // just in case we were already animating
     _panTween = Tween<Offset>(begin: Offset.zero, end: panOffset);
-    _zoomTween = Tween<double>(begin: _zoomLevel, end: zoomLevel);
-    _zoomCenter = zoomCenter;
+    _zoomTween = Tween<double>(begin: _zoomLevel, end: zoomLevel == -1 ? _zoomLevel : zoomLevel);
+    _zoomCenter = zoomCenter.dx == -1 ? _zoomCenter : zoomCenter;
     _panStart = Offset.zero;
     _animationController.forward();
   }
@@ -370,18 +404,21 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   void _updateAnimation() {
     if (_animation.isCompleted) {
       _animationController.reset();
-      widget.onChange?.call(_zoomLevel, Offset(_horOffset, _verOffset));
+      widget.onChange?.call(_zoomLevel, Offset(_horOffset.toDouble(), _verOffset.toDouble()));
     } else if (_animation.isAnimating) {
       _zoom(_zoomTween.transform(_animation.value), _zoomCenter);
       _pan(_panTween.transform(_animation.value) - _panStart);
       _panStart = _panTween.transform(_animation.value);
+      if (widget.animationSync) {
+        widget.onChange?.call(_zoomLevel, Offset(_horOffset.toDouble(), _verOffset.toDouble()));
+      }
     }
     setState(() {});
   }
 
   void _pan(panOffset) {
-    _horOffset += panOffset.dx;
-    _verOffset += panOffset.dy;
+    _horOffset += (panOffset.dx as double).round().toInt();
+    _verOffset += (panOffset.dy as double).round().toInt();
 
     // ensure we do not move the image outside the window
     _horOffset = _horOffset.clamp(
@@ -395,23 +432,64 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   }
 
   void _zoom(zoomLevel, zoomCenter) {
+    if (zoomLevel == _zoomLevel) return;
     double newZoomLevel = zoomLevel.clamp(0, _maxZoomLevel).toDouble();
     _zoomLevel = newZoomLevel;
     if (newZoomLevel == _maxZoomLevel) newZoomLevel = newZoomLevel - 1;
     int baseZoomLevel = newZoomLevel.floor();
     double scale = pow(2, newZoomLevel - newZoomLevel.ceil()).toDouble();
 
-    var newWidth = _zoomRowCols[baseZoomLevel]['width'] * scale;
-    var newHeight = _zoomRowCols[baseZoomLevel]['height'] * scale;
+    var newWidth = (_zoomRowCols[baseZoomLevel]['width'] * scale).round();
+    var newHeight = (_zoomRowCols[baseZoomLevel]['height'] * scale).round();
 
-    _horOffset =
-        newWidth > _windowWidth ? ((_horOffset - zoomCenter.dx) * newWidth / _imageWidth) + zoomCenter.dx : (_windowWidth - newWidth) / 2;
+    _horOffset = newWidth > _windowWidth
+        ? (((_horOffset - zoomCenter.dx) * newWidth / _imageWidth) + zoomCenter.dx).round().toInt()
+        : ((_windowWidth - newWidth) / 2).round().toInt();
 
     _verOffset = newHeight > _windowHeight
-        ? ((_verOffset - zoomCenter.dy) * newHeight / _imageHeight) + zoomCenter.dy
-        : (_windowHeight - newHeight) / 2;
+        ? (((_verOffset - zoomCenter.dy) * newHeight / _imageHeight) + zoomCenter.dy).round().toInt()
+        : ((_windowHeight - newHeight) / 2).round().toInt();
 
-    _imageWidth = newWidth.toInt();
-    _imageHeight = newHeight.toInt();
+    _imageWidth = newWidth.round().toInt();
+    _imageHeight = newHeight.round().toInt();
+  }
+}
+
+class ZoomifyController extends ChangeNotifier {
+  ZoomifyController();
+
+  /// the new zoomlevel
+  double zoomLevel = -1;
+
+  /// the zoomCenter, i.e. the point around which the zoom is done
+  Offset zoomCenter = Offset(-1, -1);
+
+  /// the pan offset to be applied
+  Offset panOffset = Offset.zero;
+
+  bool anim = false;
+  bool res = false;
+
+  zoomAndPan({double zoomLevel = -1, Offset zoomCenter = const Offset(-1, -1), Offset panOffset = const Offset(0, 0)}) {
+    this.zoomLevel = zoomLevel;
+    this.zoomCenter = zoomCenter;
+    this.panOffset = panOffset;
+    anim = false;
+    res = false;
+    notifyListeners();
+  }
+
+  animateZoomAndPan({double zoomLevel = -1, Offset zoomCenter = const Offset(-1, -1), Offset panOffset = const Offset(0, 0)}) {
+    this.zoomLevel = zoomLevel;
+    this.zoomCenter = zoomCenter;
+    this.panOffset = panOffset;
+    anim = true;
+    res = false;
+    notifyListeners();
+  }
+
+  reset() {
+    res = true;
+    notifyListeners();
   }
 }

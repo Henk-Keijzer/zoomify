@@ -10,12 +10,12 @@ to your server and refer to that folder in the Zoomify widget.
 ## Features
 
 Zoom in/out and pan using gestures, mouse wheel, or keyboard.
-Zoom in/out and pan programmatically
-Callback functions for onChange and onImageReady
+Callback functions for onImageReady and onChange
+Controller functions for programmatically zooming, panning and reset
 
 ## Getting started
 
-Install the package using `flutter pub add zoomify` and import it in your dart app.
+Install the package using `flutter pub add zoomify` and import it in your flutter dart app.
 
 ## Usage
 
@@ -36,6 +36,7 @@ Install the package using `flutter pub add zoomify` and import it in your dart a
 	  late double windowHeight;
 	  late ZoomifyState zoomifyState;
 	  double currentScale = 1;
+      ZoomifyController zoomifyController = ZoomifyController();
 
 	  static const String folderUrl = '<your folder url here>';
 	  static const photoTitle = '<your title here>';
@@ -69,7 +70,9 @@ Install the package using `flutter pub add zoomify` and import it in your dart a
 					onChange: (scale, offset) => handleChange(scale, offset),
 					onImageReady: (width, height, maxZoom) => handleImageReady(width, height, maxZoom),
 					animationDuration: Duration(milliseconds: 500),
-					animationCurve: Curves.easeOut)));
+					animationCurve: Curves.easeOut,
+                    animationSync: false,
+					controller: zoomifyController)));
 	  }
 
 	  void handleImageReady(int width, int height, int maxZoomLevel) {
@@ -82,39 +85,36 @@ Install the package using `flutter pub add zoomify` and import it in your dart a
 	  }
 
 	  //
-	  // Change zoom and pan programmatically. Instead of animateZoomAndPan, you can also use zoomAndPan
-	  // you can also combine pan info and zoom info in on call
+	  // Change zoom and pan programmatically. Instead of animateZoomAndPan, you can also use zoomAndPan for non-animated
+	  // zooming and panning. Set the optional parameter sync to true to trigger the onChange callback function each animation frame.
+	  // In principle you can combine pan info and zoom info in one call
+	  //
+
 	  void zoomInOut(zoomLevelDelta) {
-		dynamic state = zoomifyKey.currentState;
-		state.animateZoomAndPan(zoomLevel: currentZoomLevel + zoomLevelDelta, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
+		zoomifyController.animateZoomAndPan(
+			zoomLevel: currentZoomLevel + zoomLevelDelta, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
 	  }
 
 	  void panUp() {
-		dynamic state = zoomifyKey.currentState;
-		state.animateZoomAndPan(panOffset: Offset(0, -100));
+		zoomifyController.animateZoomAndPan(panOffset: Offset(0, -100));
 	  }
 
 	  void panDown() {
-		dynamic state = zoomifyKey.currentState;
-		state.animateZoomAndPan(panOffset: Offset(0, 100));
+		zoomifyController.animateZoomAndPan(panOffset: Offset(0, 100));
 	  }
 
 	  void panLeft() {
-		dynamic state = zoomifyKey.currentState;
-		state.animateZoomAndPan(panOffset: Offset(-100, 0));
+		zoomifyController.animateZoomAndPan(panOffset: Offset(-100, 0));
 	  }
 
 	  void panRight() {
-		dynamic state = zoomifyKey.currentState;
-		state.animateZoomAndPan(panOffset: Offset(100, 0));
+		zoomifyController.animateZoomAndPan(panOffset: Offset(100, 0));
 	  }
 
 	  void reset() {
-		dynamic state = zoomifyKey.currentState;
-		state.reset();
+		zoomifyController.reset();
 	  }
 	}
-
 
 ## Additional information
 

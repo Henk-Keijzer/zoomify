@@ -1,3 +1,11 @@
+## 1.0.6
+
+- Added a decent controller for programmatically zooming, panning and reset (see example). The previous way of working (directly calling 
+  the state functions) will be removed in the next version.)
+- Added an optional sync parameter (default false). Setting it to true will cause the onChange callback 
+  function to be triggered each animation frame. This allows for synchronous zooming / panning something else in your app (for example a 
+  flutter_map or another zoomify picture in sync with the zoomify widget).
+
 ## 1.0.5
 
 - BREAKING CHANGE: in the (animate)ZoomAndPan function the scaleDelta parameter has been removed and replaced by the zoomLevel parameter, i.
