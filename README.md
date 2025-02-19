@@ -34,8 +34,6 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 	class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 	  late double windowWidth;
 	  late double windowHeight;
-	  late double maxZoomLevel;
-	  late Size maxImageSize;
       ZoomifyController zoomifyController = ZoomifyController();
 
 	  static const String folderUrl = '<your folder url here>';
