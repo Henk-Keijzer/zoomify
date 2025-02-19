@@ -1,6 +1,6 @@
 name: zoomify
 description: "A Dart package to display and manipulate Zoomified images. Zooming and panning with gestures, mouse and keyboard"
-version: 1.0.6
+version: 1.0.7
 homepage: 'https://github.com/Henk-Keijzer/zoomify'
 
 environment:

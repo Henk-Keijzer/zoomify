@@ -1,3 +1,11 @@
+## 1.0.7
+
+- Breaking: changed parameters in onImageReady to (Size maxImageSize, int zoomLevels)
+- Breaking: changed parameters in onChange to (double zoomLevel, Offset offset, Size currentImageSize)
+- Added controller get functions getZoomLevel, getOffset and getCurrentImageSize
+- Added onTap callback function, returning the tap offset from the top-left corner of the non-zoomed-in image
+- Code optimizations and bugfixes
+
 ## 1.0.6
 
 - Added a decent controller for programmatically zooming, panning and reset (see example). The previous way of working (directly calling 

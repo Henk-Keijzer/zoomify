@@ -10,8 +10,8 @@ to your server and refer to that folder in the Zoomify widget.
 ## Features
 
 Zoom in/out and pan using gestures, mouse wheel, or keyboard.
-Callback functions for onImageReady and onChange
-Controller functions for programmatically zooming, panning and reset
+Callback functions for onImageReady, onChange an onTap. 
+Controller functions for programmatically zooming, panning and reset.
 
 ## Getting started
 
@@ -34,8 +34,8 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 	class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 	  late double windowWidth;
 	  late double windowHeight;
-	  late ZoomifyState zoomifyState;
-	  double currentScale = 1;
+	  late double maxZoomLevel;
+	  late Size maxImageSize;
       ZoomifyController zoomifyController = ZoomifyController();
 
 	  static const String folderUrl = '<your folder url here>';
@@ -67,21 +67,26 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 					showZoomButtons: true,
 					zoomButtonPosition: Alignment.centerRight,
 					zoomButtonColor: Colors.white,
-					onChange: (scale, offset) => handleChange(scale, offset),
-					onImageReady: (width, height, maxZoom) => handleImageReady(width, height, maxZoom),
+                    onChange: (zoomLevel, offset, size) => handleChange(zoomLevel, offset, size),
+                    onImageReady: (size, maxZoom) => handleImageReady(size, maxZoom),
+                    onTap: (tapOffset) => handleTap(tapOffset),
 					animationDuration: Duration(milliseconds: 500),
 					animationCurve: Curves.easeOut,
                     animationSync: false,
 					controller: zoomifyController)));
 	  }
 
-	  void handleImageReady(int width, int height, int maxZoomLevel) {
-		debugPrint('imageWidth: $width, imageHeight: $height, maxZoomLevel: $maxZoomLevel');
+	  void handleImageReady(Size size, int maxZoom) {
+		debugPrint('imageWidth: ${size.width}, imageHeight: ${size.height}, maxZoomLevel: $maxZoom');
 	  }
 
-	  void handleChange(double zoomLevel, Offset offset) {
-		debugPrint('zoomLevel: $zoomLevel, horOffset: ${offset.dx}, verOffset: ${offset.dy}');
-		currentZoomLevel = zoomLevel;
+	  void handleChange(double zoom, Offset offset, Size size) {
+		debugPrint('zoomLevel: $zoom, horOffset: ${offset.dx}, '
+			'verOffset: ${offset.dy}, imageWidth: ${size.width}, imageHeight: ${size.height}');
+	  }
+
+	  void handleTap(Offset tapOffset) {
+		debugPrint('tapOffset: $tapOffset');
 	  }
 
 	  //
@@ -92,7 +97,7 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 
 	  void zoomInOut(zoomLevelDelta) {
 		zoomifyController.animateZoomAndPan(
-			zoomLevel: currentZoomLevel + zoomLevelDelta, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
+			zoomLevel: zoomifyController.getZoomLevel() + zoomLevelDelta, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
 	  }
 
 	  void panUp() {
@@ -115,6 +120,7 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 		zoomifyController.reset();
 	  }
 	}
+
 
 ## Additional information
 
