@@ -359,7 +359,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _imageHeight = (_zoomRowCols[baseZoomLevel]['height'] * scale).round().toDouble();
     _imageReady = true;
     // sometimes this routine is called during the build process. We call the onChange callback function after the build is ready,
-    // because otherwise the onChang function cannot call setState
+    // because otherwise the onChange function cannot call setState
     _callOnChangeAfterBuild();
   }
 

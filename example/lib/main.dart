@@ -70,7 +70,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   //
   // Change zoom and pan programmatically. Instead of animateZoomAndPan, you can also use zoomAndPan for non-animated
   // zooming and panning. Set the optional parameter sync to true to trigger the onChange callback function each animation frame.
-  // In principle you can combine pan info and zoom info in one call
+  // In principle you can combine pan info (panOffset) and zoom info (zoomLevel and zoomCenter) in one call
   //
 
   void zoomInOut(zoomLevelDelta) {
