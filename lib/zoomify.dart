@@ -39,7 +39,7 @@ class Zoomify extends StatefulWidget {
   /// callback function when image is ready. returns max image width and height and the number of zoomlevels
   final Function(Size maxImageSize, int zoomLevels)? onImageReady;
 
-  /// callback function for a single tap, returns the offset from
+  /// callback function for a single tap, returns the offset from the top-left corner of the image
   final Function(Offset tapOffset)? onTap;
 
   /// animation duration
