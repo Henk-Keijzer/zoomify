@@ -20,8 +20,6 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667';
   static const photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt, Johannes Douw, 1667';
 
-  GlobalKey zoomifyKey = GlobalKey();
-
   @override
   Widget build(BuildContext context) {
     windowWidth = MediaQuery.of(context).size.width;
@@ -39,7 +37,6 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
               IconButton(onPressed: () => reset(), icon: Icon(Icons.fullscreen_exit, color: Colors.white)),
             ]),
             body: Zoomify(
-                key: zoomifyKey,
                 baseUrl: folderUrl,
                 backgroundColor: Colors.black87,
                 showGrid: false,
