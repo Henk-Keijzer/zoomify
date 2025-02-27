@@ -48,9 +48,16 @@ class Zoomify extends StatefulWidget {
   /// animation curve
   final Curve animationCurve;
 
-  /// sync, onChange callback function will be triggered each animation frame, if false (default) the onChange callback function will be
-  /// only be triggered at the end of the animation
+  /// animationSync. If true, the onChange callback function will be triggered each animation frame, if false (default) the onChange
+  /// callback function will be only be triggered at the end of the animation. Usefull if you want to animate something else in your app
+  /// in sync with the zoomify widget.
   final bool animationSync;
+
+  /// enable interactive zooming and panning
+  final bool interactive;
+
+  /// don't allow image to become smaller then the available space
+  final bool fitImage;
 
   /// the controller to use
   final ZoomifyController? controller;
@@ -69,6 +76,8 @@ class Zoomify extends StatefulWidget {
       this.animationDuration = const Duration(milliseconds: 500),
       this.animationCurve = Curves.easeOut,
       this.animationSync = false,
+      this.interactive = true,
+      this.fitImage = true,
       this.controller});
 
   @override
@@ -93,12 +102,14 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   double _windowWidth = 0;
   double _windowHeight = 0;
   int _tileSize = 256;
+  Size _maxImageSize = Size.zero;
   double _maxZoomLevel = 0;
   List<Map<String, dynamic>> _zoomRowCols = [];
   Map<String, int> _tileGroupMapping = {};
   bool _imageDataReady = false;
   bool _imageReady = false;
   Offset _zoomCenter = Offset.zero;
+  Offset _panTo = Offset.zero;
   final FocusNode _focusNode = FocusNode();
   late AnimationController _animationController;
   late Animation _animation;
@@ -141,12 +152,14 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
         _zoomAndPan(
             zoomLevel: widget.controller!._myZoomLevel,
             zoomCenter: widget.controller!._myZoomCenter,
-            panOffset: widget.controller!._myPanOffset);
+            panOffset: widget.controller!._myPanOffset,
+            panTo: widget.controller!._myPanTo);
       case 'animateZoomAndPan':
         _animateZoomAndPan(
             zoomLevel: widget.controller!._myZoomLevel,
             zoomCenter: widget.controller!._myZoomCenter,
-            panOffset: widget.controller!._myPanOffset);
+            panOffset: widget.controller!._myPanOffset,
+            panTo: widget.controller!._myPanTo);
       default:
     }
   }
@@ -170,6 +183,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
             _tileSize = int.parse(attribute.value);
         }
       }
+      _maxImageSize = Size(_imageWidth, _imageHeight);
       // now make a list (_zoomRowCols) with the number of rows, number of colums, image widths and image heights per zoomlevel (in reverse
       // order, i.e
       // zoomlevel 0 is the smallest image, fitting in a single tile: 0-0-0.jpg)
@@ -217,73 +231,75 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
       }
       return Container(
           color: widget.backgroundColor,
-          child: Stack(children: [
-            Listener(
-                // listen to mousewheel scrolls
-                onPointerSignal: (pointerSignal) => setState(() {
-                      if (pointerSignal is PointerScrollEvent) {
-                        _zoomAndPan(zoomCenter: pointerSignal.position, zoomLevel: _zoomLevel - pointerSignal.scrollDelta.dy / 500);
-                      }
-                    }),
-                child: KeyboardListener(
-                    focusNode: _focusNode,
-                    onKeyEvent: (event) => _handleKeyEvent(event),
-                    child: GestureDetector(
-                        onScaleUpdate: (scaleDetails) => setState(() => _handleGestures(scaleDetails)),
-                        onScaleStart: (_) => _scaleStart = 1,
-                        onScaleEnd: (_) => _scaleStart = 1,
-                        onTapUp: (tapDetails) => widget.onTap
-                            ?.call((tapDetails.localPosition - Offset(_horOffset, _verOffset)) * _zoomRowCols.last['width'] / _imageWidth),
-                        onDoubleTapDown: (tapDetails) =>
-                            _animateZoomAndPan(zoomCenter: tapDetails.localPosition, zoomLevel: _zoomLevel + 0.5),
-                        child: _buildZoomifyImage()))),
-            if (widget.showZoomButtons)
-              Container(
-                  alignment: widget.zoomButtonPosition,
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    IconButton(
-                        onPressed: () =>
-                            _animateZoomAndPan(zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel + 0.5),
-                        icon: Icon(Icons.add_box, color: widget.zoomButtonColor)),
-                    IconButton(
-                        onPressed: () =>
-                            _animateZoomAndPan(zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel - 0.5),
-                        icon: Icon(Icons.indeterminate_check_box, color: widget.zoomButtonColor))
-                  ]))
-          ]));
+          child: widget.interactive
+              ? Stack(children: [
+                  Listener(
+                      // listen to mousewheel scrolls
+                      onPointerSignal: (pointerSignal) => setState(() {
+                            if (pointerSignal is PointerScrollEvent) {
+                              _zoomAndPan(zoomLevel: _zoomLevel - pointerSignal.scrollDelta.dy / 500, zoomCenter: pointerSignal.position);
+                            }
+                          }),
+                      child: KeyboardListener(
+                          focusNode: _focusNode,
+                          onKeyEvent: (event) => _handleKeyEvent(event),
+                          child: GestureDetector(
+                              onScaleUpdate: (scaleDetails) => setState(() => _handleGestures(scaleDetails)),
+                              onScaleStart: (_) => _scaleStart = 1,
+                              onScaleEnd: (_) => _scaleStart = 1,
+                              onTapUp: (tapDetails) => widget.onTap?.call(
+                                  (tapDetails.localPosition - Offset(_horOffset, _verOffset)) * _zoomRowCols.last['width'] / _imageWidth),
+                              onDoubleTapDown: (tapDetails) =>
+                                  _animateZoomAndPan(zoomCenter: tapDetails.localPosition, zoomLevel: _zoomLevel + 0.5),
+                              child: _buildZoomifyImage()))),
+                  if (widget.showZoomButtons)
+                    Container(
+                        alignment: widget.zoomButtonPosition,
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          IconButton(
+                              onPressed: () =>
+                                  _animateZoomAndPan(zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel + 0.5),
+                              icon: Icon(Icons.add_box, color: widget.zoomButtonColor)),
+                          IconButton(
+                              onPressed: () =>
+                                  _animateZoomAndPan(zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel - 0.5),
+                              icon: Icon(Icons.indeterminate_check_box, color: widget.zoomButtonColor))
+                        ]))
+                ])
+              : _buildZoomifyImage());
     });
   }
 
   Widget _buildZoomifyImage() {
     if (!_imageDataReady || !_imageReady) return SizedBox.shrink();
-
     // convert _zoomLevel to baseZoomLevel and scale
     int baseZoomLevel = _zoomLevel.ceil() - 1;
     double scale = pow(2, _zoomLevel - _zoomLevel.ceil()).toDouble();
-    //
-    // increase the size of the image in case it is smaller than the available space
-    if (_zoomRowCols[baseZoomLevel]['width'] * scale < _windowWidth && _zoomRowCols[baseZoomLevel]['height'] * scale < _windowHeight) {
-      _setInitialImageData();
-      baseZoomLevel = _zoomLevel.ceil() - 1;
-      scale = pow(2, _zoomLevel - _zoomLevel.ceil()).toDouble();
-    }
-    // move the image to the right and to the bottom if there is empty space there
-    var oldOffset = Offset(_horOffset, _verOffset);
-    _horOffset = _horOffset
-        .clamp(
-          _windowWidth - _imageWidth > 0 ? 0 : _windowWidth - _imageWidth,
-          _windowWidth - _imageWidth > 0 ? _windowWidth - _imageWidth : 0,
-        )
-        .roundToDouble();
-    _verOffset = _verOffset
-        .clamp(
-          _windowHeight - _imageHeight > 0 ? 0 : _windowHeight - _imageHeight,
-          _windowHeight - _imageHeight > 0 ? _windowHeight - _imageHeight : 0,
-        )
-        .roundToDouble();
-    if (oldOffset != Offset(_horOffset, _verOffset)) {
-      // if we had to move the image, the zoomCenter must also move and we have to call the onChange callback function ater the build
-      _callOnChangeAfterBuild();
+    if (widget.fitImage) {
+      // increase the size of the image in case it is smaller than the available space
+      if (_zoomRowCols[baseZoomLevel]['width'] * scale < _windowWidth && _zoomRowCols[baseZoomLevel]['height'] * scale < _windowHeight) {
+        _setInitialImageData();
+        baseZoomLevel = _zoomLevel.ceil() - 1;
+        scale = pow(2, _zoomLevel - _zoomLevel.ceil()).toDouble();
+      }
+      // move the image to the right and to the bottom if there is empty space there
+      var oldOffset = Offset(_horOffset, _verOffset);
+      _horOffset = _horOffset
+          .clamp(
+            _windowWidth - _imageWidth > 0 ? 0 : _windowWidth - _imageWidth,
+            _windowWidth - _imageWidth > 0 ? _windowWidth - _imageWidth : 0,
+          )
+          .roundToDouble();
+      _verOffset = _verOffset
+          .clamp(
+            _windowHeight - _imageHeight > 0 ? 0 : _windowHeight - _imageHeight,
+            _windowHeight - _imageHeight > 0 ? _windowHeight - _imageHeight : 0,
+          )
+          .roundToDouble();
+      if (oldOffset != Offset(_horOffset, _verOffset)) {
+        // if we had to move the image, the zoomCenter must also move and we have to call the onChange callback function ater the build
+        _callOnChangeAfterBuild();
+      }
     }
     //
     // create some readability variables
@@ -357,6 +373,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _verOffset = ((_windowHeight - _zoomRowCols[baseZoomLevel]['height'] * scale) / 2);
     _imageWidth = (_zoomRowCols[baseZoomLevel]['width'] * scale).round().toDouble();
     _imageHeight = (_zoomRowCols[baseZoomLevel]['height'] * scale).round().toDouble();
+    _zoomCenter = Offset(_windowWidth / 2, _windowHeight / 2);
     _imageReady = true;
     // sometimes this routine is called during the build process. We call the onChange callback function after the build is ready,
     // because otherwise the onChange function cannot call setState
@@ -388,33 +405,39 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   void _handleGestures(scaleDetails) {
     _animationController.reset(); // stop any animation that may be running
     _zoomAndPan(
-        panOffset: Offset(scaleDetails.focalPointDelta.dx, scaleDetails.focalPointDelta.dy),
         zoomCenter: scaleDetails.localFocalPoint,
-        zoomLevel: _zoomLevel + (scaleDetails.scale - _scaleStart));
+        zoomLevel: _zoomLevel + (scaleDetails.scale - _scaleStart),
+        panOffset: Offset(scaleDetails.focalPointDelta.dx, scaleDetails.focalPointDelta.dy));
     _scaleStart = scaleDetails.scale;
   }
 
   // set new pan and zoom values without animation
-  void _zoomAndPan({panOffset = Offset.zero, zoomCenter = const Offset(-1, -1), zoomLevel = -1}) {
+  void _zoomAndPan({zoomLevel = -1, zoomCenter = const Offset(-1, -1), panOffset = Offset.zero, panTo = const Offset(-1, -1)}) {
     _zoom(zoomLevel == -1 ? _zoomLevel : zoomLevel, zoomCenter.dx == -1 ? _zoomCenter : zoomCenter);
     _pan(panOffset);
+    _panToAbs(panTo);
     setState(() {});
     widget.onChange?.call(_zoomLevel, Offset(_horOffset, _verOffset), Size(_imageWidth, _imageHeight));
   }
 
   // set initial pan and zoom values for pan/zoom animation and start the animation
-  void _animateZoomAndPan({panOffset = Offset.zero, zoomCenter = const Offset(-1, -1), zoomLevel = -1}) {
+  void _animateZoomAndPan({zoomLevel = -1, zoomCenter = const Offset(-1, -1), panOffset = Offset.zero, panTo = const Offset(-1, -1)}) {
     _animationController.reset(); // just in case we were already animating
     _panTween = Tween<Offset>(begin: Offset.zero, end: panOffset);
     _zoomTween = Tween<double>(begin: _zoomLevel, end: zoomLevel == -1 ? _zoomLevel : zoomLevel);
     _zoomCenter = zoomCenter.dx == -1 ? _zoomCenter : zoomCenter;
     _panStart = Offset.zero;
+    _panTo = panTo;
     _animationController.forward();
   }
 
   void _updateAnimation() {
     if (_animation.isCompleted) {
       _animationController.reset();
+      if (_panTo.dx != -1 && _panTo.dy != -1) {
+        _panToAbs(_panTo);
+        _panTo = Offset(-1, -1);
+      }
       widget.onChange?.call(_zoomLevel, Offset(_horOffset, _verOffset), Size(_imageWidth, _imageHeight));
     } else if (_animation.isAnimating) {
       _zoom(_zoomTween.transform(_animation.value), _zoomCenter);
@@ -432,7 +455,17 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _verOffset += (panOffset.dy as double).roundToDouble();
   }
 
+  void _panToAbs(panTo) {
+    if (panTo.dx == -1 && panTo.dy == -1) return;
+    var dx = panTo.dx.clamp(0, _maxImageSize.width);
+    var dy = panTo.dy.clamp(0, _maxImageSize.height);
+    var scale = _imageWidth / _maxImageSize.width;
+    _horOffset = (_windowWidth / 2) - (dx * scale);
+    _verOffset = (_windowHeight / 2) - (dy * scale);
+  }
+
   void _zoom(zoomLevel, zoomCenter) {
+    _zoomCenter = zoomCenter;
     if (zoomLevel == _zoomLevel) return;
     _zoomLevel = zoomLevel.clamp(0, _maxZoomLevel).toDouble();
     int baseZoomLevel = _zoomLevel.ceil() - 1;
@@ -466,21 +499,32 @@ class ZoomifyController extends ChangeNotifier {
   double _myZoomLevel = -1;
   Offset _myZoomCenter = Offset(-1, -1);
   Offset _myPanOffset = Offset.zero;
+  Offset _myPanTo = Offset(-1, -1);
 
   String _setType = '';
 
-  zoomAndPan({double zoomLevel = -1, Offset zoomCenter = const Offset(-1, -1), Offset panOffset = const Offset(0, 0)}) {
+  zoomAndPan(
+      {double zoomLevel = -1,
+      Offset zoomCenter = const Offset(-1, -1),
+      Offset panOffset = const Offset(0, 0),
+      Offset panTo = const Offset(-1, -1)}) {
     _myZoomLevel = zoomLevel;
     _myZoomCenter = zoomCenter;
     _myPanOffset = panOffset;
+    _myPanTo = panTo;
     _setType = 'zoomAndPan';
     notifyListeners();
   }
 
-  animateZoomAndPan({double zoomLevel = -1, Offset zoomCenter = const Offset(-1, -1), Offset panOffset = const Offset(0, 0)}) {
+  animateZoomAndPan(
+      {double zoomLevel = -1,
+      Offset zoomCenter = const Offset(-1, -1),
+      Offset panOffset = const Offset(0, 0),
+      Offset panTo = const Offset(-1, -1)}) {
     _myZoomLevel = zoomLevel;
     _myZoomCenter = zoomCenter;
     _myPanOffset = panOffset;
+    _myPanTo = panTo;
     _setType = 'animateZoomAndPan';
     notifyListeners();
   }

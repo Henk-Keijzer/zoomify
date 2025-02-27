@@ -1,3 +1,11 @@
+## 1.0.8
+
+- Added parameter 'interactive' (default = true). If set to false, you can/should add your own keyboard/mouse/gesture detector on top of 
+  the zoomify widget, or use the controller to interact with the image.
+- Added parameter 'pantTo: Offset' to controller.(animate)PanAndZoom function. Moves the given point, relative to the original max image, 
+  to the center of the window
+- Added parameter 'fitImage' (default = true). If set to fals, allows the image to become smaller then the winde
+
 ## 1.0.7
 
 - Breaking: changed parameters in onImageReady to (Size maxImageSize, int zoomLevels)

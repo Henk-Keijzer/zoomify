@@ -13,6 +13,8 @@ class MyApp extends StatefulWidget {
 class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late double windowWidth;
   late double windowHeight;
+  late double _maxZoomLevel;
+  late Size _size;
   ZoomifyController zoomifyController = ZoomifyController();
 
 //  static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
@@ -35,6 +37,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
               IconButton(onPressed: () => panLeft(), icon: Icon(Icons.arrow_back, color: Colors.white)),
               IconButton(onPressed: () => panRight(), icon: Icon(Icons.arrow_forward, color: Colors.white)),
               IconButton(onPressed: () => reset(), icon: Icon(Icons.fullscreen_exit, color: Colors.white)),
+              IconButton(onPressed: () => panTo(), icon: Icon(Icons.location_pin, color: Colors.white))
             ]),
             body: Zoomify(
                 baseUrl: folderUrl,
@@ -43,17 +46,21 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 showZoomButtons: true,
                 zoomButtonPosition: Alignment.centerRight,
                 zoomButtonColor: Colors.white,
-                onChange: (zoomLevel, offset, size) => handleChange(zoomLevel, offset, size),
                 onImageReady: (size, maxZoom) => handleImageReady(size, maxZoom),
+                onChange: (zoomLevel, offset, size) => handleChange(zoomLevel, offset, size),
                 onTap: (tapOffset) => handleTap(tapOffset),
                 animationDuration: Duration(milliseconds: 500),
                 animationCurve: Curves.easeOut,
                 animationSync: false,
+                interactive: true,
+                fitImage: true,
                 controller: zoomifyController)));
   }
 
   void handleImageReady(Size size, int maxZoom) {
     debugPrint('max image size: $size, max zoom level: $maxZoom');
+    _maxZoomLevel = maxZoom.toDouble();
+    _size = size;
   }
 
   void handleChange(double zoom, Offset offset, Size size) {
@@ -62,6 +69,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void handleTap(Offset tapOffset) {
     debugPrint('tap offset: $tapOffset');
+    zoomifyController.animateZoomAndPan(panTo: tapOffset, zoomLevel: _maxZoomLevel);
   }
 
   //
@@ -93,5 +101,9 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void reset() {
     zoomifyController.reset();
+  }
+
+  void panTo() {
+    zoomifyController.animateZoomAndPan(zoomLevel: _maxZoomLevel, panTo: Offset(_size.width / 4, _size.height / 4));
   }
 }

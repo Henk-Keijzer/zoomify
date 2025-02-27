@@ -34,6 +34,8 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 	class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 	  late double windowWidth;
 	  late double windowHeight;
+      late double _maxZoomLevel;
+      late Size _size;
       ZoomifyController zoomifyController = ZoomifyController();
 
 	  static const String folderUrl = '<your folder url here>';
@@ -56,6 +58,7 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 				  IconButton(onPressed: () => panLeft(), icon: Icon(Icons.arrow_back, color: Colors.white)),
 				  IconButton(onPressed: () => panRight(), icon: Icon(Icons.arrow_forward, color: Colors.white)),
 				  IconButton(onPressed: () => reset(), icon: Icon(Icons.fullscreen_exit, color: Colors.white)),
+                  IconButton(onPressed: () => panTo(), icon: Icon(Icons.send, color: Colors.white))
 				]),
 				body: Zoomify(
 					key: zoomifyKey,
@@ -71,11 +74,16 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 					animationDuration: Duration(milliseconds: 500),
 					animationCurve: Curves.easeOut,
                     animationSync: false,
+                    interactive: true,
+                    interactive: true,
+                    fitImage: true,
 					controller: zoomifyController)));
 	  }
 
 	  void handleImageReady(Size size, int maxZoom) {
 		debugPrint('imageWidth: ${size.width}, imageHeight: ${size.height}, maxZoomLevel: $maxZoom');
+        _maxZoomLevel = maxZoom.toDouble();
+        _size = size;
 	  }
 
 	  void handleChange(double zoom, Offset offset, Size size) {
@@ -85,6 +93,7 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 
 	  void handleTap(Offset tapOffset) {
 		debugPrint('tapOffset: $tapOffset');
+        zoomifyController.animateZoomAndPan(panTo: tapOffset, zoomLevel: _maxZoomLevel);
 	  }
 
 	  //
@@ -117,6 +126,10 @@ Install the package using `flutter pub add zoomify` and import it in your flutte
 	  void reset() {
 		zoomifyController.reset();
 	  }
+
+      void panTo() {
+        zoomifyController.animateZoomAndPan(zoomLevel: _maxZoomLevel, panTo: Offset(_size.width / 4, _size.height / 4));
+      }
 	}
 
 
