@@ -17,10 +17,10 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late Size _size;
   ZoomifyController zoomifyController = ZoomifyController();
 
-//  static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
-//  static const photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
+  //static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
+  //static const String photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
   static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667';
-  static const photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt, Johannes Douw, 1667';
+  static const String photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt, Johannes Douw, 1667';
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +44,13 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 backgroundColor: Colors.black87,
                 showGrid: false,
                 showZoomButtons: true,
-                zoomButtonPosition: Alignment.centerRight,
-                zoomButtonColor: Colors.white,
-                onImageReady: (size, maxZoom) => handleImageReady(size, maxZoom),
+                showPanButtons: true,
+                showResetButton: true,
+                buttonPosition: Alignment.centerRight,
+                buttonColor: Colors.brown,
+                onImageReady: (maxSize, maxZoom) => handleImageReady(maxSize, maxZoom),
                 onChange: (zoomLevel, offset, size) => handleChange(zoomLevel, offset, size),
-                onTap: (tapOffset) => handleTap(tapOffset),
+                onTap: (imageOffset, windowOffset) => handleTap(imageOffset, windowOffset),
                 animationDuration: Duration(milliseconds: 500),
                 animationCurve: Curves.easeOut,
                 animationSync: false,
@@ -57,19 +59,19 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 controller: zoomifyController)));
   }
 
-  void handleImageReady(Size size, int maxZoom) {
-    debugPrint('max image size: $size, max zoom level: $maxZoom');
+  void handleImageReady(Size maxSize, int maxZoom) {
+    debugPrint('max image size: $maxSize, max zoom level: $maxZoom');
     _maxZoomLevel = maxZoom.toDouble();
-    _size = size;
+    _size = maxSize;
   }
 
   void handleChange(double zoom, Offset offset, Size size) {
     debugPrint('current zoom level: $zoom, offset: $offset, current image size: $size');
   }
 
-  void handleTap(Offset tapOffset) {
-    debugPrint('tap offset: $tapOffset');
-    zoomifyController.animateZoomAndPan(panTo: tapOffset, zoomLevel: _maxZoomLevel);
+  void handleTap(Offset imageOffset, Offset windowOffset) {
+    debugPrint('tap on image offset: $imageOffset, window offset: $windowOffset');
+    zoomifyController.animateZoomAndPan(panTo: imageOffset, zoomLevel: _maxZoomLevel - 1);
   }
 
   //
@@ -104,6 +106,6 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void panTo() {
-    zoomifyController.animateZoomAndPan(zoomLevel: _maxZoomLevel, panTo: Offset(_size.width / 4, _size.height / 4));
+    zoomifyController.zoomAndPan(zoomLevel: _maxZoomLevel, panTo: Offset(_size.width / 4, _size.height / 4));
   }
 }
