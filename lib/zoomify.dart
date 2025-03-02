@@ -150,32 +150,34 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   void dispose() {
     super.dispose();
     _animationController.dispose();
+    widget.controller?.removeListener(() => _controllerFunctions());
+    widget.controller?.dispose();
   }
 
   void _controllerFunctions() {
-    switch (widget.controller!._setType) {
+    switch (widget.controller!._controllerSetMethod) {
       case 'reset':
         setState(() => _setInitialImageData());
       case 'zoomAndPan':
         _zoomAndPan(
-            zoomLevel: widget.controller!._myZoomLevel,
-            zoomCenter: widget.controller!._myZoomCenter == Offset.infinite
+            zoomLevel: widget.controller!._controllerZoomLevel,
+            zoomCenter: widget.controller!._controllerZoomCenter == Offset.infinite
                 ? Offset.infinite
-                : widget.controller!._myZoomCenter.clamp(Offset.zero, Offset(_windowWidth, _windowHeight)),
-            panOffset: widget.controller!._myPanOffset,
-            panTo: widget.controller!._myPanTo == Offset.infinite
+                : widget.controller!._controllerZoomCenter.clamp(Offset.zero, Offset(_windowWidth, _windowHeight)),
+            panOffset: widget.controller!._controllerPanOffset,
+            panTo: widget.controller!._controllerPanTo == Offset.infinite
                 ? Offset.infinite
-                : widget.controller!._myPanTo.clamp(Offset.zero, Offset(_maxImageSize.width, _maxImageSize.height)));
+                : widget.controller!._controllerPanTo.clamp(Offset.zero, Offset(_maxImageSize.width, _maxImageSize.height)));
       case 'animateZoomAndPan':
         _animateZoomAndPan(
-            zoomLevel: widget.controller!._myZoomLevel,
-            zoomCenter: widget.controller!._myZoomCenter == Offset.infinite
+            zoomLevel: widget.controller!._controllerZoomLevel,
+            zoomCenter: widget.controller!._controllerZoomCenter == Offset.infinite
                 ? Offset.infinite
-                : widget.controller!._myZoomCenter.clamp(Offset.zero, Offset(_windowWidth, _windowHeight)),
-            panOffset: widget.controller!._myPanOffset,
-            panTo: widget.controller!._myPanTo == Offset.infinite
+                : widget.controller!._controllerZoomCenter.clamp(Offset.zero, Offset(_windowWidth, _windowHeight)),
+            panOffset: widget.controller!._controllerPanOffset,
+            panTo: widget.controller!._controllerPanTo == Offset.infinite
                 ? Offset.infinite
-                : widget.controller!._myPanTo.clamp(Offset.zero, Offset(_maxImageSize.width, _maxImageSize.height)));
+                : widget.controller!._controllerPanTo.clamp(Offset.zero, Offset(_maxImageSize.width, _maxImageSize.height)));
     }
   }
 
@@ -241,13 +243,14 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
       _windowWidth = constraints.maxWidth;
       _windowHeight = constraints.maxHeight;
       if (_imageDataReady && !_imageReady) {
-        // imagedata is ready but the image itself is not properly scaled yet
+        // imagedata is ready but the image itself is not properly scaled within the window yet
         _setInitialImageData(); //
       }
       return Container(
           color: widget.backgroundColor,
-          child: widget.interactive
-              ? Stack(children: [
+          child: !widget.interactive
+              ? _buildZoomifyImage()
+              : Stack(children: [
                   Listener(
                       // listen to mousewheel scrolls
                       onPointerSignal: (pointerSignal) => setState(() {
@@ -309,8 +312,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
                                 icon: Icon(Icons.fullscreen_exit, color: widget.buttonColor)),
                           ])
                       ])),
-                ])
-              : _buildZoomifyImage());
+                ]));
     });
   }
 
@@ -341,7 +343,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
           )
           .roundToDouble();
       if (oldOffset != Offset(_horOffset, _verOffset)) {
-        // if we had to move the image, the zoomCenter must also move and we have to call the onChange callback function ater the build
+        // if we had to move the image, we have to call the onChange callback function ater the build
         _callOnChangeAfterBuild();
       }
     }
@@ -362,7 +364,6 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     // calculate the offset of the first visible tile
     final Offset visibleOffset = Offset(_horOffset < 0 ? (_horOffset % (_tileSize * scale)) - _tileSize * scale : _horOffset.toDouble(),
         _verOffset < 0 ? (_verOffset % (_tileSize * scale)) - _tileSize * scale : _verOffset.toDouble());
-
     // fill the available space with tiles
     return SizedBox(
         width: _windowWidth.toDouble(),
@@ -396,7 +397,9 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     widget.onChange?.call(_zoomLevel, Offset(_horOffset, _verOffset), Size(_imageWidth, _imageHeight));
   }
 
+  // set _zoomlevel, _horOffset, _verOffset, _imageWidth, _imageHeight and _zoomcenter for the initial image and set _imageReady to true
   void _setInitialImageData() {
+    // routine to calculate the scale of the image, fitting in the available space
     double calculateScale(double width1, double height1, double width2, double height2) {
       double scaleWidth = width2 / width1;
       double scaleHeight = height2 / height1;
@@ -423,17 +426,18 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _callOnChangeAfterBuild();
   }
 
+  //
   void _handleKeyEvent(event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
       switch (event.logicalKey.keyLabel) {
         case 'Arrow Right' || 'R':
-          _animateZoomAndPan(panOffset: Offset(100, 0), zoomLevel: _zoomLevel);
+          _animateZoomAndPan(panOffset: Offset(100, 0));
         case 'Arrow Left' || 'L':
-          _animateZoomAndPan(panOffset: Offset(-100, 0), zoomLevel: _zoomLevel);
+          _animateZoomAndPan(panOffset: Offset(-100, 0));
         case 'Arrow Up' || 'U':
-          _animateZoomAndPan(panOffset: Offset(0, -100), zoomLevel: _zoomLevel);
+          _animateZoomAndPan(panOffset: Offset(0, -100));
         case 'Arrow Down' || 'D':
-          _animateZoomAndPan(panOffset: Offset(0, 100), zoomLevel: _zoomLevel);
+          _animateZoomAndPan(panOffset: Offset(0, 100));
         case 'Escape' || 'H':
           setState(() => _setInitialImageData());
         case '+' || '=':
@@ -471,14 +475,15 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _zoomTween = Tween<double>(begin: _zoomLevel, end: zoomLevel < 0.0 ? _zoomLevel : zoomLevel);
     _zoomCenter = zoomCenter == Offset.infinite ? _zoomCenter : zoomCenter;
     _panStart = Offset.zero;
-    _panTo = panTo;
+    _panTo = panTo; // just remember the panTo value for after the animation
     _animationController.forward();
   }
 
   void _updateAnimation() {
     if (_animation.isCompleted) {
       _animationController.reset();
-      _panToAbs(_panTo);
+      _panToAbs(_panTo); // sorry, no animation on the panTo, calculation too complex when zooming and panning to a specific point at the
+      // same time
       _panTo = Offset.infinite;
       widget.onChange?.call(_zoomLevel, Offset(_horOffset, _verOffset), Size(_imageWidth, _imageHeight));
     } else if (_animation.isAnimating) {
@@ -543,37 +548,37 @@ extension on Offset {
 class ZoomifyController extends ChangeNotifier {
   ZoomifyController();
 
-  double _myZoomLevel = -1;
-  Offset _myZoomCenter = Offset.infinite;
-  Offset _myPanOffset = Offset.zero;
-  Offset _myPanTo = Offset.infinite;
+  double _controllerZoomLevel = -1;
+  Offset _controllerZoomCenter = Offset.infinite;
+  Offset _controllerPanOffset = Offset.zero;
+  Offset _controllerPanTo = Offset.infinite;
 
-  String _setType = '';
+  String _controllerSetMethod = '';
 
   /// directly zoom (zoomLevel & zoomCenter), pan relatively (panOffset) or pan absolutely (panTo).
   zoomAndPan({double zoomLevel = -1, Offset zoomCenter = Offset.infinite, Offset panOffset = Offset.zero, Offset panTo = Offset.infinite}) {
-    _myZoomLevel = zoomLevel;
-    _myZoomCenter = zoomCenter;
-    _myPanOffset = panOffset;
-    _myPanTo = panTo;
-    _setType = 'zoomAndPan';
+    _controllerZoomLevel = zoomLevel;
+    _controllerZoomCenter = zoomCenter;
+    _controllerPanOffset = panOffset;
+    _controllerPanTo = panTo;
+    _controllerSetMethod = 'zoomAndPan';
     notifyListeners();
   }
 
   /// animated  zoom (zoomLevel & zoomCenter), pan relatively (panOffset) or pan absolutely (panTo).
   animateZoomAndPan(
       {double zoomLevel = -1, Offset zoomCenter = Offset.infinite, Offset panOffset = Offset.zero, Offset panTo = Offset.infinite}) {
-    _myZoomLevel = zoomLevel;
-    _myZoomCenter = zoomCenter;
-    _myPanOffset = panOffset;
-    _myPanTo = panTo;
-    _setType = 'animateZoomAndPan';
+    _controllerZoomLevel = zoomLevel;
+    _controllerZoomCenter = zoomCenter;
+    _controllerPanOffset = panOffset;
+    _controllerPanTo = panTo;
+    _controllerSetMethod = 'animateZoomAndPan';
     notifyListeners();
   }
 
   /// reset image to initial state
   reset() {
-    _setType = 'reset';
+    _controllerSetMethod = 'reset';
     notifyListeners();
   }
 
