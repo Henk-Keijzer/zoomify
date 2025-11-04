@@ -19,8 +19,8 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   //static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
   //static const String photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
-  static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667';
-  static const String photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt, Johannes Douw, 1667';
+  static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Zonnestraal';
+  static const String photoTitle = 'Zonnestraal, Hilversum';
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +47,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 showPanButtons: true,
                 showResetButton: true,
                 buttonPosition: Alignment.centerRight,
-                buttonColor: Colors.brown,
+                buttonColor: Colors.white,
                 onImageReady: (maxSize, maxZoom) => handleImageReady(maxSize, maxZoom),
                 onChange: (zoomLevel, offset, size) => handleChange(zoomLevel, offset, size),
                 onTap: (imageOffset, windowOffset) => handleTap(imageOffset, windowOffset),
@@ -60,17 +60,17 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void handleImageReady(Size maxSize, int maxZoom) {
-    debugPrint('max image size: $maxSize, max zoom level: $maxZoom');
+    debugPrint('max image size: (${maxSize.width}, ${maxSize.height}), max zoom level: $maxZoom');
     _maxZoomLevel = maxZoom.toDouble();
     _size = maxSize;
   }
 
   void handleChange(double zoom, Offset offset, Size size) {
-    debugPrint('current zoom level: $zoom, offset: $offset, current image size: $size');
+    debugPrint('current zoom level: $zoom, offset: (${offset.dx}, ${offset.dy}), current image size: (${size.width}, ${size.height})');
   }
 
   void handleTap(Offset imageOffset, Offset windowOffset) {
-    debugPrint('tap on image offset: $imageOffset, window offset: $windowOffset');
+    debugPrint('tap on image offset: (${imageOffset.dx}, ${imageOffset.dy}), window offset: (${windowOffset.dx}, ${windowOffset.dy})');
     zoomifyController.animateZoomAndPan(panTo: imageOffset, zoomLevel: _maxZoomLevel - 1);
   }
 

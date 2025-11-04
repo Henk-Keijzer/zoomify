@@ -427,7 +427,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   }
 
   //
-  void _handleKeyEvent(event) {
+  void _handleKeyEvent(dynamic event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
       switch (event.logicalKey.keyLabel) {
         case 'Arrow Right' || 'R':
@@ -449,7 +449,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   }
 
   // translate gestures to pan and zoom values
-  void _handleGestures(scaleDetails) {
+  void _handleGestures(dynamic scaleDetails) {
     _animationController.reset(); // stop any animation that may be running
     _zoomAndPan(
         zoomCenter: scaleDetails.localFocalPoint,
@@ -497,14 +497,14 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     setState(() {});
   }
 
-  void _pan(panOffset) {
+  void _pan(dynamic panOffset) {
     _horOffset += (panOffset.dx as double).roundToDouble();
     _horOffset = _horOffset.clamp(10 - _imageWidth, _windowWidth - 10);
     _verOffset += (panOffset.dy as double).roundToDouble();
     _verOffset = _verOffset.clamp(10 - _imageHeight, _windowHeight - 10);
   }
 
-  void _panToAbs(panTo) {
+  void _panToAbs(dynamic panTo) {
     if (panTo == Offset.infinite) return;
     var dx = panTo.dx.clamp(0, _maxImageSize.width);
     var dy = panTo.dy.clamp(0, _maxImageSize.height);
@@ -514,7 +514,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _zoomCenter = Offset(_windowWidth / 2, _windowHeight / 2);
   }
 
-  void _zoom(zoomLevel, zoomCenter) {
+  void _zoom(dynamic zoomLevel, dynamic zoomCenter) {
     _zoomCenter = zoomCenter == Offset.infinite ? _zoomCenter : zoomCenter;
     if (zoomLevel == _zoomLevel || zoomLevel < 0) return;
     _zoomLevel = zoomLevel.clamp(0, _maxZoomLevel).toDouble();
@@ -536,7 +536,7 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
 }
 
 extension on Offset {
-  clamp(Offset zero, Offset offset) {
+  Offset clamp(Offset zero, Offset offset) {
     return Offset(dx.clamp(zero.dx, offset.dx), dy.clamp(zero.dy, offset.dy));
   }
 }
@@ -556,7 +556,8 @@ class ZoomifyController extends ChangeNotifier {
   String _controllerSetMethod = '';
 
   /// directly zoom (zoomLevel & zoomCenter), pan relatively (panOffset) or pan absolutely (panTo).
-  zoomAndPan({double zoomLevel = -1, Offset zoomCenter = Offset.infinite, Offset panOffset = Offset.zero, Offset panTo = Offset.infinite}) {
+  void zoomAndPan(
+      {double zoomLevel = -1, Offset zoomCenter = Offset.infinite, Offset panOffset = Offset.zero, Offset panTo = Offset.infinite}) {
     _controllerZoomLevel = zoomLevel;
     _controllerZoomCenter = zoomCenter;
     _controllerPanOffset = panOffset;
@@ -566,7 +567,7 @@ class ZoomifyController extends ChangeNotifier {
   }
 
   /// animated  zoom (zoomLevel & zoomCenter), pan relatively (panOffset) or pan absolutely (panTo).
-  animateZoomAndPan(
+  void animateZoomAndPan(
       {double zoomLevel = -1, Offset zoomCenter = Offset.infinite, Offset panOffset = Offset.zero, Offset panTo = Offset.infinite}) {
     _controllerZoomLevel = zoomLevel;
     _controllerZoomCenter = zoomCenter;
@@ -577,7 +578,7 @@ class ZoomifyController extends ChangeNotifier {
   }
 
   /// reset image to initial state
-  reset() {
+  void reset() {
     _controllerSetMethod = 'reset';
     notifyListeners();
   }

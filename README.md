@@ -1,4 +1,4 @@
-The Zoomify widget allows you to display gigapixel images without de need to 
+The Zoomify widget allows you to display gigapixel images without the need to 
 download the whole image at once. The user can zoom in/out and pan around and
 the necessary 256x256 tiles are downloaded on the fly.
 
