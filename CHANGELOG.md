@@ -1,3 +1,8 @@
+## 1.1.0
+
+- Added buttonAxis parameter to the constructor (default = Axis.vertical)
+- Added buttonOrderReversed parameter to the constructor (default = false)
+
 ## 1.0.9
 
 - Added showPanButtons and showResetButton parameters to the constructor (both default false)

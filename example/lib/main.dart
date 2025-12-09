@@ -17,10 +17,10 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late Size _size;
   ZoomifyController zoomifyController = ZoomifyController();
 
-  //static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
-  //static const String photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
-  static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Zonnestraal';
-  static const String photoTitle = 'Zonnestraal, Hilversum';
+  static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
+  static const String photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
+  //static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Zonnestraal';
+  //static const String photoTitle = 'Zonnestraal, Hilversum';
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +47,8 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 showPanButtons: true,
                 showResetButton: true,
                 buttonPosition: Alignment.centerRight,
+                buttonAxis: Axis.vertical,
+                buttonOrderReversed: false,
                 buttonColor: Colors.white,
                 onImageReady: (maxSize, maxZoom) => handleImageReady(maxSize, maxZoom),
                 onChange: (zoomLevel, offset, size) => handleChange(zoomLevel, offset, size),

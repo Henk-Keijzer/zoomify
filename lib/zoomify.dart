@@ -32,6 +32,11 @@ class Zoomify extends StatefulWidget {
   /// zoombutton position
   final Alignment buttonPosition;
 
+  final bool buttonOrderReversed;
+
+  /// buttonAxis
+  final Axis buttonAxis;
+
   /// zoombutton color
   final Color buttonColor;
 
@@ -76,6 +81,8 @@ class Zoomify extends StatefulWidget {
       this.showPanButtons = false,
       this.showResetButton = false,
       this.buttonPosition = Alignment.bottomRight,
+      this.buttonAxis = Axis.vertical,
+      this.buttonOrderReversed = false,
       this.buttonColor = Colors.white,
       this.showGrid = false,
       this.onChange,
@@ -238,6 +245,39 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     FocusScope.of(context).requestFocus(_focusNode); // for keyboard entry
+    List<Widget> buttonList = [
+      if (widget.showZoomButtons)
+        IconButton(
+            onPressed: () => _animateZoomAndPan(zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel + 0.5),
+            icon: Icon(Icons.add_box, color: widget.buttonColor)),
+      if (widget.showZoomButtons)
+        IconButton(
+            onPressed: () => _animateZoomAndPan(zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel - 0.5),
+            icon: Icon(Icons.indeterminate_check_box, color: widget.buttonColor)),
+      if (widget.showPanButtons && widget.showZoomButtons)
+        RotatedBox(
+            quarterTurns: widget.buttonAxis == Axis.horizontal ? 1 : 0,
+            child: Icon(Icons.horizontal_rule_rounded, color: widget.buttonColor.withAlpha(127))),
+      if (widget.showPanButtons)
+        IconButton(
+            onPressed: () => _animateZoomAndPan(panOffset: Offset(100, 0)), icon: Icon(Icons.arrow_forward, color: widget.buttonColor)),
+      if (widget.showPanButtons)
+        IconButton(
+            onPressed: () => _animateZoomAndPan(panOffset: Offset(-100, 0)), icon: Icon(Icons.arrow_back, color: widget.buttonColor)),
+      if (widget.showPanButtons)
+        IconButton(
+            onPressed: () => _animateZoomAndPan(panOffset: Offset(0, 100)), icon: Icon(Icons.arrow_downward, color: widget.buttonColor)),
+      if (widget.showPanButtons)
+        IconButton(
+            onPressed: () => _animateZoomAndPan(panOffset: Offset(0, -100)), icon: Icon(Icons.arrow_upward, color: widget.buttonColor)),
+      if (widget.showResetButton && (widget.showZoomButtons || widget.showPanButtons))
+        RotatedBox(
+            quarterTurns: widget.buttonAxis == Axis.horizontal ? 1 : 0,
+            child: Icon(Icons.horizontal_rule_rounded, color: widget.buttonColor.withAlpha(127))),
+      if (widget.showResetButton)
+        IconButton(onPressed: () => setState(() => _setInitialImageData()), icon: Icon(Icons.fullscreen_exit, color: widget.buttonColor)),
+    ];
+    if (widget.buttonOrderReversed) buttonList = buttonList.reversed.toList();
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints constraints) {
       // use LayoutBuilder to get the current window size
       _windowWidth = constraints.maxWidth;
@@ -275,43 +315,9 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
                               child: _buildZoomifyImage()))),
                   Container(
                       alignment: widget.buttonPosition,
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        if (widget.showZoomButtons)
-                          Column(mainAxisSize: MainAxisSize.min, children: [
-                            IconButton(
-                                onPressed: () => _animateZoomAndPan(
-                                    zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel + 0.5),
-                                icon: Icon(Icons.add_box, color: widget.buttonColor)),
-                            IconButton(
-                                onPressed: () => _animateZoomAndPan(
-                                    zoomCenter: Offset(_windowWidth / 2, _windowHeight / 2), zoomLevel: _zoomLevel - 0.5),
-                                icon: Icon(Icons.indeterminate_check_box, color: widget.buttonColor))
-                          ]),
-                        if (widget.showPanButtons)
-                          Column(mainAxisSize: MainAxisSize.min, children: [
-                            if (widget.showZoomButtons) Icon(Icons.horizontal_rule_rounded, color: widget.buttonColor.withAlpha(127)),
-                            IconButton(
-                                onPressed: () => _animateZoomAndPan(panOffset: Offset(100, 0)),
-                                icon: Icon(Icons.arrow_forward, color: widget.buttonColor)),
-                            IconButton(
-                                onPressed: () => _animateZoomAndPan(panOffset: Offset(-100, 0)),
-                                icon: Icon(Icons.arrow_back, color: widget.buttonColor)),
-                            IconButton(
-                                onPressed: () => _animateZoomAndPan(panOffset: Offset(0, 100)),
-                                icon: Icon(Icons.arrow_downward, color: widget.buttonColor)),
-                            IconButton(
-                                onPressed: () => _animateZoomAndPan(panOffset: Offset(0, -100)),
-                                icon: Icon(Icons.arrow_upward, color: widget.buttonColor))
-                          ]),
-                        if (widget.showResetButton)
-                          Column(mainAxisSize: MainAxisSize.min, children: [
-                            if (widget.showZoomButtons || widget.showPanButtons)
-                              Icon(Icons.horizontal_rule_rounded, color: widget.buttonColor.withAlpha(127)),
-                            IconButton(
-                                onPressed: () => setState(() => _setInitialImageData()),
-                                icon: Icon(Icons.fullscreen_exit, color: widget.buttonColor)),
-                          ])
-                      ])),
+                      child: widget.buttonAxis == Axis.horizontal
+                          ? Row(mainAxisSize: MainAxisSize.min, children: buttonList)
+                          : Column(mainAxisSize: MainAxisSize.min, children: buttonList))
                 ]));
     });
   }
