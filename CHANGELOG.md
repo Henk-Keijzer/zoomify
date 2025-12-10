@@ -1,3 +1,7 @@
+## 1.1.1
+
+- improved image display when transitioning from one tile leyer to the next (higer or lower) layer
+
 ## 1.1.0
 
 - Added buttonAxis parameter to the constructor (default = Axis.vertical)
