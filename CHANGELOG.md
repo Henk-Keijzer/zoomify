@@ -1,4 +1,4 @@
-## 2.1.0
+## 1.2.0
 
 - added code for Deep Zoom Image (DZI) images
 - further improved transitioning over zoom levels to prevent flashing
