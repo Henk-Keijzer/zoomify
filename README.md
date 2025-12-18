@@ -1,12 +1,19 @@
-The Zoomify widget allows you to display gigapixel images without the need to 
-download the whole image at once. The user can zoom in/out and pan around and
-the necessary 256x256 tiles are downloaded on the fly.
+The Zoomify widget allows you to display Zoomify and Deep Zoom Image (DZI) gigapixel 
+images without the need to download the whole image at once. The user can zoom in/out 
+and pan around and the necessary 256x256 tiles are downloaded on the fly.
 
-Create a zoomified image using the 'Zoomify Free Converter.exe' for Windows (download from
+Create a Zoomify image using the 'Zoomify Free Converter.exe' for Windows (download from
 https://download.cnet.com/zoomify-free/3000-10248_4-77422171.html), or MacOS (download from 
 https://download.cnet.com/zoomify-free/3000-10248_4-77422654.html).
 Upload the folder containing the ImageProperties.xml and the TileGroup folders 
 to your server and refer to that folder in the Zoomify widget.
+
+Create a DZI image using the Zoomara app from the Microsoft Store or use any of the scripts
+listed on https://openseadragon.github.io/examples/creating-zooming-images/
+Note that the folder in which the tiles are created must contain a folder named 'image_files' and 
+a file called 'image.xyz', where xyz is either 'xml' or 'dzi' for an xml formatted description
+of the image, 'json' or 'jsonp' for a json formatted description. For further details see
+https://openseadragon.github.io/examples/tilesource-dzi/
 
 ## Features
 

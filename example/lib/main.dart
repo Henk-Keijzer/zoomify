@@ -17,10 +17,15 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late Size _size;
   ZoomifyController zoomifyController = ZoomifyController();
 
-  static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
-  static const String photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
-  //static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Zonnestraal';
-  //static const String photoTitle = 'Zonnestraal, Hilversum';
+  // Zoomify image
+  //static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
+  //static const String photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
+  // Zoomify image
+  static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667';
+  static const String photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt';
+  // Deep Zoom Image
+  //static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667_DZI';
+  //static const String photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt';
 
   @override
   Widget build(BuildContext context) {
@@ -42,14 +47,14 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
             body: Zoomify(
                 baseUrl: folderUrl,
                 backgroundColor: Colors.black87,
-                showGrid: false,
+                showGrid: true,
                 showZoomButtons: true,
                 showPanButtons: true,
                 showResetButton: true,
                 buttonPosition: Alignment.centerRight,
                 buttonAxis: Axis.vertical,
                 buttonOrderReversed: false,
-                buttonColor: Colors.white,
+                buttonColor: Colors.brown,
                 onImageReady: (maxSize, maxZoom) => handleImageReady(maxSize, maxZoom),
                 onChange: (zoomLevel, offset, size) => handleChange(zoomLevel, offset, size),
                 onTap: (imageOffset, windowOffset) => handleTap(imageOffset, windowOffset),
@@ -57,7 +62,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 animationCurve: Curves.easeOut,
                 animationSync: false,
                 interactive: true,
-                fitImage: true,
+                fitImage: false,
                 controller: zoomifyController)));
   }
 

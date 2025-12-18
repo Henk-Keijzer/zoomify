@@ -1,3 +1,10 @@
+## 2.1.0
+
+- added code for Deep Zoom Image (DZI) images
+- further improved transitioning over zoom levels to prevent flashing
+- added a single row/col of tiles around the edges to prevent 'black' tiles when panning
+- fixed a bug in the controller
+
 ## 1.1.1
 
 - improved image display when transitioning from one tile leyer to the next (higer or lower) layer
