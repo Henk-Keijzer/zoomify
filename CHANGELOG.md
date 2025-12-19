@@ -1,3 +1,8 @@
+## 1.2.1
+
+- bugfixes and optimizations
+- added panButtonOffset parameter to the constructor (default = 100) and changed the default direction of button pan movement
+
 ## 1.2.0
 
 - added code for Deep Zoom Image (DZI) images

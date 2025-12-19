@@ -21,11 +21,11 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   //static const String folderUrl = 'https://kaartdekaag1933.zeilvaartwarmond.nl/kaartderkagerplassen-1933';
   //static const String photoTitle = 'Kaart der Kagerplassen, Uitgave 1933';
   // Zoomify image
-  static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667';
-  static const String photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt';
-  // Deep Zoom Image
-  //static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667_DZI';
+  //static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667';
   //static const String photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt';
+  // Deep Zoom Image
+  static const String folderUrl = 'https://chaerte.zeilvaartwarmond.nl/Warmond_J_Douw_1667_DZI';
+  static const String photoTitle = 'Chaerte vande vrye Heerlickheydt Warmondt';
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +47,13 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
             body: Zoomify(
                 baseUrl: folderUrl,
                 backgroundColor: Colors.black87,
-                showGrid: true,
+                showGrid: false,
                 showZoomButtons: true,
                 showPanButtons: true,
+                panButtonOffset: 200,
                 showResetButton: true,
-                buttonPosition: Alignment.centerRight,
-                buttonAxis: Axis.vertical,
+                buttonPosition: Alignment.bottomCenter,
+                buttonAxis: Axis.horizontal,
                 buttonOrderReversed: false,
                 buttonColor: Colors.brown,
                 onImageReady: (maxSize, maxZoom) => handleImageReady(maxSize, maxZoom),
@@ -89,23 +90,23 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void zoomInOut(zoomLevelDelta) {
     zoomifyController.animateZoomAndPan(
-        zoomLevel: zoomifyController.getZoomLevel() + zoomLevelDelta, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
+        zoomLevel: zoomifyController.getZoomLevel + zoomLevelDelta, zoomCenter: Offset(windowWidth / 2, windowHeight / 2));
   }
 
   void panUp() {
-    zoomifyController.animateZoomAndPan(panOffset: Offset(0, -100));
-  }
-
-  void panDown() {
     zoomifyController.animateZoomAndPan(panOffset: Offset(0, 100));
   }
 
+  void panDown() {
+    zoomifyController.animateZoomAndPan(panOffset: Offset(0, -100));
+  }
+
   void panLeft() {
-    zoomifyController.animateZoomAndPan(panOffset: Offset(-100, 0));
+    zoomifyController.animateZoomAndPan(panOffset: Offset(100, 0));
   }
 
   void panRight() {
-    zoomifyController.animateZoomAndPan(panOffset: Offset(100, 0));
+    zoomifyController.animateZoomAndPan(panOffset: Offset(-100, 0));
   }
 
   void reset() {
@@ -113,6 +114,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void panTo() {
-    zoomifyController.zoomAndPan(zoomLevel: _maxZoomLevel, panTo: Offset(_size.width / 4, _size.height / 4));
+    var zoom = zoomifyController.getZoomLevel;
+    zoomifyController.animateZoomAndPan(zoomLevel: zoom + 2, panTo: Offset(_size.width / 4, _size.height / 3));
   }
 }
