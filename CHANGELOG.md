@@ -1,3 +1,8 @@
+## 1.2.2
+
+- added fling logic (pan movement does not abruptly stop after pan gesture)
+- bugfix (widget cannot be marked as needing to build because the framework is already in the process of building widgets.)
+
 ## 1.2.1
 
 - bugfixes and optimizations

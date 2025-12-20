@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/gestures.dart';
 import 'package:xml/xml.dart';
 import 'package:path/path.dart' as path;
+import 'package:flutter/physics.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../src/zoomify_controller.dart';
 export '../src/zoomify_controller.dart';
@@ -369,11 +371,9 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
                           focusNode: _focusNode,
                           onKeyEvent: (event) => _handleKeyEvent(event),
                           child: GestureDetector(
-                              onScaleStart: (_) {
-                                _scaleStart = 1;
-                              },
+                              onScaleStart: (_) => _scaleStart = 1,
                               onScaleUpdate: (scaleDetails) => setState(() => _handleGestures(scaleDetails)),
-                              onScaleEnd: (_) => _scaleStart = 1,
+                              onScaleEnd: (details) => _fling(details),
                               onTapUp: (tapDetails) => widget.onTap?.call(
                                   (tapDetails.localPosition - Offset(_horOffset, _verOffset)) * _maxImageSize.width / _imageWidth,
                                   tapDetails.localPosition),
@@ -417,11 +417,12 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     // Build Target Layer
     layers.add(_buildTileLayer(zoomLevel: targetZoom, scale: targetScale, offset: horVerOffset));
     // and return the stack of two layer fit to the window size
-    return SizedBox(
+    return RepaintBoundary(
+        child: SizedBox(
       width: _windowWidth,
       height: _windowHeight,
       child: Stack(children: layers),
-    );
+    ));
   }
 
   //----------------------------------------------------------------------------------------------------------------------------------------
@@ -638,8 +639,8 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _fitZoomLevel = _zoomLevel;
     _horOffset = ((_windowWidth - _zoomRowCols[baseZoomLevel]['width'] * scale) / 2);
     _verOffset = ((_windowHeight - _zoomRowCols[baseZoomLevel]['height'] * scale) / 2);
-    _imageWidth = (_zoomRowCols[baseZoomLevel]['width'] * scale).round().toDouble();
-    _imageHeight = (_zoomRowCols[baseZoomLevel]['height'] * scale).round().toDouble();
+    _imageWidth = (_zoomRowCols[baseZoomLevel]['width'] * scale);
+    _imageHeight = (_zoomRowCols[baseZoomLevel]['height'] * scale);
     _zoomCenter = Offset(_windowWidth / 2, _windowHeight / 2);
     _imagePositioned = true;
     // sometimes this routine is called during the build process. In that situation we cannot call the users onChange routine, so
@@ -686,6 +687,38 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     _scaleStart = scaleDetails.scale;
   }
 
+  void _fling(ScaleEndDetails details) {
+    // Check if there is enough velocity to warrant a fling.
+    final double velocityMagnitude = details.velocity.pixelsPerSecond.distance;
+    if (velocityMagnitude < 200.0) {
+      // Not enough speed, just stop.
+      setState(() => _scaleStart = 1);
+      return;
+    }
+    // Calculate the direction of the velocity
+    final Offset velocity = details.velocity.pixelsPerSecond;
+    // Create a physics simulation to predict the final resting position.
+    // We simulate friction to determine how far the image would slide.
+    // 0.005 is a friction coefficient constant (tweak for "slipperiness").
+    // We calculate separate simulations for X and Y to handle 2D movement.
+    final FrictionSimulation simulationX = FrictionSimulation(0.005, 0.0, velocity.dx);
+    final FrictionSimulation simulationY = FrictionSimulation(0.005, 0.0, velocity.dy);
+    // Calculate the total distance traveled by the simulation (final position at infinity)
+    // simulation.x(time) gives position. simulation.finalX is the resting point.
+    final double distanceX = simulationX.finalX;
+    final double distanceY = simulationY.finalX;
+    // Apply this delta to the current offset
+    // Note: We are just adding the delta to the current offset.
+    // The boundaries will be handled by the clamping logic inside _animateZoomAndPan.
+    final Offset targetPanOffset = Offset(distanceX, distanceY);
+    // Trigger the animation.
+    // We use a custom duration based on how long the physics simulation thinks it should take,
+    // clamped to a reasonable max (e.g., 1 second) to prevent it from feeling too floaty.
+    // Alternatively, just use the standard animationDuration.
+    _animateZoomAndPan(panOffset: targetPanOffset, fling: true);
+    setState(() => _scaleStart = 1);
+  }
+
   //----------------------------------------------------------------------------------------------------------------------------------------
   // set new pan and zoom values without animation
   //
@@ -702,18 +735,18 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
   // same with animation
   // initialization of the animation
   //
-  void _animateZoomAndPan({double zoomLevel = -1, zoomCenter = Offset.infinite, panOffset = Offset.zero, panTo = Offset.infinite}) {
+  void _animateZoomAndPan(
+      {double zoomLevel = -1, zoomCenter = Offset.infinite, panOffset = Offset.zero, panTo = Offset.infinite, fling = false}) {
     _animationController.reset();
     // Determine the actual target zoom level
     double targetZoom = zoomLevel < 0.0 ? _zoomLevel : zoomLevel;
-    if (widget.fitImage) {
-      targetZoom = targetZoom.clamp(_fitZoomLevel, _maxZoomLevel);
-    }
+    if (widget.fitImage) targetZoom = targetZoom.clamp(_fitZoomLevel, _maxZoomLevel);
     _panTween = Tween<Offset>(begin: Offset.zero, end: panOffset);
     _zoomTween = Tween<double>(begin: _zoomLevel, end: targetZoom);
     _zoomCenter = zoomCenter == Offset.infinite ? _zoomCenter : zoomCenter;
     _panStart = Offset.zero;
     _panTo = panTo;
+    _animationController.duration = fling ? Duration(milliseconds: 500) : widget.animationDuration;
     _animationController.forward();
   }
 
@@ -755,15 +788,21 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
       widget.controller?.updateState(_zoomLevel, Offset(_horOffset, _verOffset), Size(_imageWidth, _imageHeight));
       if (widget.animationSync) _callOnChangeAfterBuild();
     }
-    setState(() {});
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      if (mounted) setState(() {});
+    }
   }
 
   //----------------------------------------------------------------------------------------------------------------------------------------
   // straight forward pan  and zoom routines
   //
   void _pan(Offset panOffset) {
-    _horOffset += panOffset.dx.roundToDouble();
-    _verOffset += panOffset.dy.roundToDouble();
+    _horOffset += panOffset.dx;
+    _verOffset += panOffset.dy;
     _clampOffset();
   }
 
@@ -791,13 +830,11 @@ class ZoomifyState extends State<Zoomify> with SingleTickerProviderStateMixin {
     var newWidth = (_zoomRowCols[baseZoomLevel]['width'] * scale).roundToDouble();
     var newHeight = (_zoomRowCols[baseZoomLevel]['height'] * scale).roundToDouble();
     _horOffset = (newWidth > _windowWidth
-            ? (((_horOffset - zoomCenter.dx) * newWidth / _imageWidth) + zoomCenter.dx)
-            : ((_windowWidth - newWidth) / 2))
-        .roundToDouble();
+        ? (((_horOffset - zoomCenter.dx) * newWidth / _imageWidth) + zoomCenter.dx)
+        : ((_windowWidth - newWidth) / 2));
     _verOffset = (newHeight > _windowHeight
-            ? (((_verOffset - zoomCenter.dy) * newHeight / _imageHeight) + zoomCenter.dy)
-            : ((_windowHeight - newHeight) / 2))
-        .roundToDouble();
+        ? (((_verOffset - zoomCenter.dy) * newHeight / _imageHeight) + zoomCenter.dy)
+        : ((_windowHeight - newHeight) / 2));
     _imageWidth = newWidth;
     _imageHeight = newHeight;
   }
